@@ -1,3 +1,4 @@
+const { ID } = require('node-appwrite');
 
 const crypto = require("crypto");
 
@@ -19,24 +20,49 @@ function rand_str(length) {
 /**
  * 
  * @param {Appwrite_Databases} databases 
- * @returns {String} COLLECTION_ID
+ * @param {String} database_id 
+ * @returns {Promise<string>} COLLECTION_ID
  */
-function create_new_collection(databases) {
+function create_new_collection(databases, database_id) {
     let promise = databases.createCollection(
-        DATABASE_ID, ID.unique(), new Date().toISOString().replace(":", "_")
+        database_id, ID.unique(), new Date().toISOString().replace(":", "_")
     );
     
+    return promise.then(
+    function (response) {
+        return response["$id"];
+    }, 
+    function (error) {
+        console.log(error);
+        return "";
+    });
+}
+
+
+/**
+ * 
+ * @param { Appwrite_Databases } databases 
+ * @param { String } database_id 
+ * @returns {Promise<collections_response>}
+ */
+function delete_all_collections(databases, database_id) {
+    const promise = databases.listCollections(database_id);
+
     promise.then(function (response) {
-        // console.log(response);
-        // console.log("#### created collection id=" + COLLECTION_ID);
+        response["collections"].forEach(col => {
+            const promise_inner = databases.deleteCollection(database_id, col["$id"]);
+            promise_inner.then(function (response_inner) {
+                return response_inner
+            }, function (error) {
+                console.log(error);
+            });
+        })
     }, function (error) {
         console.log(error);
     });
-
-    return response["$id"]
 }
 
 module.exports = {
     rand_str, 
-    create_new_collection
+    create_new_collection, delete_all_collections
 }

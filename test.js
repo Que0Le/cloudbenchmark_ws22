@@ -1,6 +1,6 @@
 const { Client, Users, ID, Databases } = require('node-appwrite');
 
-const { rand_str } = require('./helpers');
+const { rand_str, create_new_collection, delete_all_collections } = require('./helpers');
 
 const client = new Client();
 client.setSelfSigned();
@@ -28,43 +28,57 @@ client
 //     console.log(error);
 // });
 
-let DATABASE_ID = "638e7d2d73a3e15dc541";
-let COLLECTION_ID = "";
-let DOCUMENT_ID = "";
+// let DATABASE_ID = "638e7d2d73a3e15dc541";
+// let COLLECTION_ID = "";
+// let DOCUMENT_ID = "";
 
 
 
 /* Create collection */
-let promise = databases.createCollection(
-    DATABASE_ID, ID.unique(), new Date().toISOString().replace(":", "_")
-);
+// let promise = databases.createCollection(
+//     DATABASE_ID, ID.unique(), new Date().toISOString().replace(":", "_")
+// );
 
-promise.then(function (response) {
-    // console.log(response);
-    COLLECTION_ID = response["$id"]
-    console.log("#### created collection id=" + COLLECTION_ID);
-}, function (error) {
-    console.log(error);
-});
+// promise.then(function (response) {
+//     // console.log(response);
+//     COLLECTION_ID = response["$id"]
+//     console.log("#### created collection id=" + COLLECTION_ID);
+// }, function (error) {
+//     console.log(error);
+// });
 
-console.log(COLLECTION_ID);
-/* Fill data */
-for (let i=0; i<2; i++) {
-    let data = {
-        username: "_username_" + rand_str(100),
-        password: "_password_" + rand_str(100),
-        status: "_status_" + rand_str(100),
-        bio: "_bio_"  + rand_str(100)
-    };
-    // console.log(data);
 
-    let promise = databases.createDocument(
-        DATABASE_ID, COLLECTION_ID, ID.unique(), data
-    );
-    
-    promise.then(function (response) {
-        // console.log(response);
-    }, function (error) {
-        console.log(error);
-    });
+async function main() {
+    let DATABASE_ID = "638e7d2d73a3e15dc541";
+    let COLLECTION_ID = "";
+    let DOCUMENT_ID = "";
+    COLLECTION_ID = await create_new_collection(databases, DATABASE_ID);
+    console.log(COLLECTION_ID);
+    await delete_all_collections(databases, DATABASE_ID);
 }
+
+main()
+
+
+/* Fill data */
+// for (let i=0; i<2; i++) {
+//     let data = {
+//         username: "_username_" + rand_str(100),
+//         password: "_password_" + rand_str(100),
+//         status: "_status_" + rand_str(100),
+//         bio: "_bio_"  + rand_str(100)
+//     };
+//     // console.log(data);
+
+//     let promise = databases.createDocument(
+//         DATABASE_ID, COLLECTION_ID, ID.unique(), data
+//     );
+    
+//     promise.then(function (response) {
+//         // console.log(response);
+//     }, function (error) {
+//         console.log(error);
+//     });
+// }
+
+
