@@ -3,7 +3,9 @@ const { Client, Users, ID, Databases } = require('node-appwrite');
 const { 
     rand_str, sleep_ms,
     create_new_collection, delete_all_collections, 
-    create_userdb_attributes, create_new_document_user 
+    create_userdb_attributes, create_new_document_user,
+    create_attr_for_collection, promiseAllInBatches,
+    create_document_and_record_rtt
 } = require('./helpers');
 
 const client = new Client();
@@ -52,29 +54,89 @@ client
 // });
 
 
+let DATABASE_ID = "638e7d2d73a3e15dc541";
 async function main() {
-    let DATABASE_ID = "638e7d2d73a3e15dc541";
+    console.time("main")
     await delete_all_collections(databases, DATABASE_ID);
     let COLLECTION_ID = "";
     let DOCUMENT_ID = "";
     COLLECTION_ID = await create_new_collection(databases, DATABASE_ID);
     console.log("## CREATED COLLECTION_ID=" + COLLECTION_ID);
     let temp = await create_userdb_attributes(databases, DATABASE_ID, COLLECTION_ID);
-    console.log({temp: temp})
+    // console.log({temp: temp})
     await sleep_ms(1000)
-    for (let i = 0; i < 20; i++) {
-        create_new_document_user(
+    let created_promisses = []
+    for (let i = 0; i < 5000; i++) {
+        created_promisses.push(create_new_document_user(
             databases, DATABASE_ID, COLLECTION_ID, {
                 "password": "password" + "_" + i,
                 "username": "username" + "_" + i,
                 "email": "email" + "_" + i,
                 "profile": "profile" + "_" + i,
             }
-        )
+        ))
     }
+    Promise.all(created_promisses).then((result) => {
+        console.timeEnd("main")
+    })
 }
 
-main()
+
+// main()
+
+async function test_create_collection_10k_doc() {
+    
+    await delete_all_collections(databases, DATABASE_ID);
+    let COLLECTION_ID = await create_new_collection(databases, DATABASE_ID);
+    console.log("## CREATED COLLECTION_ID=" + COLLECTION_ID);
+
+    let max_attr = 10
+    attrs = []
+    for (let i=0; i<max_attr; i++) {
+        attrs.push({"attr_key": "key_" + i, "attr_size": 255, "attr_required": true})
+    }
+    let created_attrs = await create_attr_for_collection(databases, DATABASE_ID, COLLECTION_ID, attrs)
+    console.log("## CREATED attrs: " + created_attrs)
+    await sleep_ms(2000)
+
+    max_chunk = 5
+    max_shard = 10
+
+    for (let chunk_th = 0; chunk_th < max_chunk; chunk_th++) {
+        console.log("-- Chunk=" + chunk_th)
+        console.time("test_create_collection_10k_doc")
+        let created_promisses = []
+        for (let shard_th = 0; shard_th < max_shard; shard_th++) {
+            data = {}
+            for (let j = max_attr - 1; j >= 0; j--) {
+                data["key_" + j] = "iteration_" + chunk_th*1000000 + shard_th
+            }
+            created_promisses.push(create_document_and_record_rtt(
+                databases, DATABASE_ID, COLLECTION_ID, data, chunk_th*1000000 + shard_th
+            ))
+        }
+        await Promise.all(created_promisses).then((result) => {
+            console.log(result)
+            console.timeEnd("test_create_collection_10k_doc")
+        })
+    }
+
+    // let created_promisses = []
+    // for (let i = 0; i < 50000; i++) {
+    //     data = {}
+    //     for (let j = max_attr - 1; j >= 0; j--) {
+    //         data["key_" + j] = "iteration_" + i + "_" + j
+    //     }
+    //     console.log(data)
+    //     created_promisses.push(create_new_document_user(
+    //         databases, DATABASE_ID, COLLECTION_ID, data
+    //     ))
+    // }
+    // Promise.all(created_promisses).then((result) => {
+    //     console.timeEnd("test_create_collection_10k_doc")
+    // })
+}
+test_create_collection_10k_doc()
 
 
 /* Fill data */
