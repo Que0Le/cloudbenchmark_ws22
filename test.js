@@ -1,12 +1,16 @@
 const { Client, Users, ID, Databases } = require('node-appwrite');
 
-const { rand_str, create_new_collection, delete_all_collections } = require('./helpers');
+const { 
+    rand_str, sleep_ms,
+    create_new_collection, delete_all_collections, 
+    create_userdb_attributes, create_new_document_user 
+} = require('./helpers');
 
 const client = new Client();
 client.setSelfSigned();
 
 const databases = new Databases(client);
-
+// databases.createStringAttribute('[DATABASE_ID]', '[COLLECTION_ID]', '', 1, false);
 client
     .setEndpoint('https://localhost/v1') // Your API Endpoint
     .setProject('638d23c561bab05913aa') // Your project ID
@@ -50,11 +54,24 @@ client
 
 async function main() {
     let DATABASE_ID = "638e7d2d73a3e15dc541";
+    await delete_all_collections(databases, DATABASE_ID);
     let COLLECTION_ID = "";
     let DOCUMENT_ID = "";
     COLLECTION_ID = await create_new_collection(databases, DATABASE_ID);
-    console.log(COLLECTION_ID);
-    await delete_all_collections(databases, DATABASE_ID);
+    console.log("## CREATED COLLECTION_ID=" + COLLECTION_ID);
+    let temp = await create_userdb_attributes(databases, DATABASE_ID, COLLECTION_ID);
+    console.log({temp: temp})
+    await sleep_ms(1000)
+    for (let i = 0; i < 20; i++) {
+        create_new_document_user(
+            databases, DATABASE_ID, COLLECTION_ID, {
+                "password": "password" + "_" + i,
+                "username": "username" + "_" + i,
+                "email": "email" + "_" + i,
+                "profile": "profile" + "_" + i,
+            }
+        )
+    }
 }
 
 main()
