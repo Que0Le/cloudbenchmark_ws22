@@ -25,3 +25,11 @@ docker run -it --rm \
 
 # http://localhost:3000/
 ```
+
+
+```bash
+python3 -m venv env
+source env/bin/activate
+
+uvicorn system_stat:app --host 0.0.0.0 --port 8888
+```

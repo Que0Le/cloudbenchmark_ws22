@@ -1,2 +1,5 @@
 appwrite
 node_modules
+env
+outputfile.txt
+__pycache__

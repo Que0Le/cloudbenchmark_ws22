@@ -99,8 +99,8 @@ async function test_create_collection_10k_doc() {
     console.log("## CREATED attrs: " + created_attrs)
     await sleep_ms(2000)
 
-    max_chunk = 5
-    max_shard = 10
+    max_chunk = 500
+    max_shard = 1000
 
     for (let chunk_th = 0; chunk_th < max_chunk; chunk_th++) {
         console.log("-- Chunk=" + chunk_th)
@@ -116,25 +116,11 @@ async function test_create_collection_10k_doc() {
             ))
         }
         await Promise.all(created_promisses).then((result) => {
-            console.log(result)
+            // console.log(result)
             console.timeEnd("test_create_collection_10k_doc")
         })
     }
 
-    // let created_promisses = []
-    // for (let i = 0; i < 50000; i++) {
-    //     data = {}
-    //     for (let j = max_attr - 1; j >= 0; j--) {
-    //         data["key_" + j] = "iteration_" + i + "_" + j
-    //     }
-    //     console.log(data)
-    //     created_promisses.push(create_new_document_user(
-    //         databases, DATABASE_ID, COLLECTION_ID, data
-    //     ))
-    // }
-    // Promise.all(created_promisses).then((result) => {
-    //     console.timeEnd("test_create_collection_10k_doc")
-    // })
 }
 test_create_collection_10k_doc()
 

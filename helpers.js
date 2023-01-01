@@ -51,15 +51,15 @@ function create_new_collection(db_obj, database_id) {
  * @returns {Promise<string>}
  */
 function create_document_and_record_rtt(db_obj, database_id, collection_id, data, request_id) {
-    let test_begin = performance.now()
+    let t0 = performance.now()
     let promise = db_obj.createDocument(
         database_id, collection_id, ID.unique(), data
     );
     return promise.then(
         function (response) {
-            let rtt = performance.now() - test_begin;
+            let t3 = performance.now()
             // return response["$id"];
-            return {"request_id": request_id, "rtt": rtt}
+            return {"request_id": request_id, "t0": t0, "t3": t3}
         },
         function (error) {
             // console.log({request_id: request_id, error: error})
