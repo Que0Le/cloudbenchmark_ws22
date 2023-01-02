@@ -1,4 +1,5 @@
 const { ID, Databases } = require('node-appwrite');
+const http = require('http');
 
 const crypto = require("crypto");
 
@@ -8,17 +9,34 @@ function sleep_ms(ms) {
 
 /**
  * 
+ * @param {String} collect_start_url Server collection signal path, ie "http://192.168.1.32:8888/collect-stat"
+ */
+function request_collecting_stat(collect_start_url) {
+    http.get(collect_start_url, (res) => {
+        console.log('statusCode:', res.statusCode);
+        console.log('headers:', res.headers);
+
+        res.on('data', (d) => {
+            // process.stdout.write(d);
+        });
+
+    }).on('error', (e) => {
+        console.error(e);
+    });
+}
+
+
+/**
+ * The resulting string will be twice as long as the random bytes you generate; 
+ * each byte encoded to hex is 2 characters. 20 bytes will be 40 characters of hex. 
+ * https://stackoverflow.com/a/27747377
  * @param {String} length 
  * @returns {String} a string with length 2xlength
  */
 function rand_str(length) {
-    /* The resulting string will be twice as long as the random bytes you generate; 
-    each byte encoded to hex is 2 characters. 
-    20 bytes will be 40 characters of hex. 
-    https://stackoverflow.com/a/27747377
-    */
     return crypto.randomBytes(length).toString('hex');
 }
+
 
 /**
  * 
@@ -186,7 +204,7 @@ function delete_all_collections(databases, database_id) {
 }
 
 module.exports = {
-    rand_str, sleep_ms, 
+    rand_str, sleep_ms, request_collecting_stat,
     create_new_collection, delete_all_collections, 
     create_userdb_attributes, create_new_document_user,
     create_attr_for_collection, promiseAllInBatches,

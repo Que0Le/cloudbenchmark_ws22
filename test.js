@@ -1,12 +1,17 @@
 const { Client, Users, ID, Databases } = require('node-appwrite');
 
+require('dotenv').config();
+
+let SERVER_ADDR  = process.env.SERVER_ADDR
+
 const { 
-    rand_str, sleep_ms,
+    rand_str, sleep_ms, request_collecting_stat,
     create_new_collection, delete_all_collections, 
     create_userdb_attributes, create_new_document_user,
     create_attr_for_collection, promiseAllInBatches,
     create_document_and_record_rtt
 } = require('./helpers');
+
 
 const client = new Client();
 client.setSelfSigned();
@@ -97,9 +102,14 @@ async function test_create_collection_10k_doc() {
     }
     let created_attrs = await create_attr_for_collection(databases, DATABASE_ID, COLLECTION_ID, attrs)
     console.log("## CREATED attrs: " + created_attrs)
+
+    // Inform test server to start collecting system status
+    let collect_start_url = "http://" + process.env.SERVER_ADDR + ":" + process.env.SERVER_PORT + process.env.SERVER_STAT_COLLECTION_ADDR
+    request_collecting_stat(collect_start_url)
+
     await sleep_ms(2000)
 
-    max_chunk = 500
+    max_chunk = 5
     max_shard = 1000
 
     for (let chunk_th = 0; chunk_th < max_chunk; chunk_th++) {
@@ -120,6 +130,7 @@ async function test_create_collection_10k_doc() {
             console.timeEnd("test_create_collection_10k_doc")
         })
     }
+    request_collecting_stat(collect_start_url)
 
 }
 test_create_collection_10k_doc()

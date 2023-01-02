@@ -23,6 +23,9 @@ def collect_stat():
     # Export data to file
     with open('outputfile.txt', 'w') as fout:
         json.dump(stat, fout)
+    # clear data
+    stat = []
+    index = 0
 
 
 # def write_log(message: str):
