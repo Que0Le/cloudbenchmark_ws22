@@ -4,6 +4,7 @@ env
 outputfile.txt
 __pycache__
 .env
+log_client_*.txt
 log_sut_*.txt
 log_sut_*.json
 test_*

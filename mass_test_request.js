@@ -1,11 +1,12 @@
 const { Client, Users, ID, Databases } = require('node-appwrite');
+const fs = require('fs');
 
 require('dotenv').config();
 
 let SERVER_ADDR  = process.env.SERVER_ADDR
 
 const { 
-    rand_str, sleep_ms, 
+    rand_str, sleep_ms, write_array_of_results_to_file,
     req_start_collecting_stat, req_stop_collecting_stat,
     create_new_collection, delete_all_collections, 
     create_userdb_attributes, create_new_document_user,
@@ -20,44 +21,10 @@ client.setSelfSigned();
 const databases = new Databases(client);
 // databases.createStringAttribute('[DATABASE_ID]', '[COLLECTION_ID]', '', 1, false);
 client
-    .setEndpoint('https://localhost/v1') // Your API Endpoint
-    .setProject('638d23c561bab05913aa') // Your project ID
-    .setKey('d72529f1c65f7f066e35270e752ec7f769633fafd075462de200acc110aa76ee4edda6ff64b454830beed9b5e9743d0d090845090a491e7328cf5c00338477a99f59abe3f08869fcbb5a0379369730332ddd45770ae2290ee054bf91ebc8663236aa5542e816ab364ab5de5dae3ad76cac490b9e461350d1b412e4a38de2eb50')
+    .setEndpoint(process.env.APPWRITE_API_ENDPOINT) // Your API Endpoint
+    .setProject(process.env.APPWRITE_PROJECT) // Your project ID
+    .setKey(process.env.APPWRITE_API_KEY)
 ;
-
-// const users = new Users(client);
-
-// let promise = users.create(
-//     ID.unique(),
-//     'email@example.com',
-//     null,
-//     'password'
-// );
-
-// promise.then(function (response) {
-//     console.log(response);
-// }, function (error) {
-//     console.log(error);
-// });
-
-// let DATABASE_ID = "638e7d2d73a3e15dc541";
-// let COLLECTION_ID = "";
-// let DOCUMENT_ID = "";
-
-
-
-/* Create collection */
-// let promise = databases.createCollection(
-//     DATABASE_ID, ID.unique(), new Date().toISOString().replace(":", "_")
-// );
-
-// promise.then(function (response) {
-//     // console.log(response);
-//     COLLECTION_ID = response["$id"]
-//     console.log("#### created collection id=" + COLLECTION_ID);
-// }, function (error) {
-//     console.log(error);
-// });
 
 
 let DATABASE_ID = "638e7d2d73a3e15dc541";
@@ -90,7 +57,11 @@ async function main() {
 
 // main()
 
-async function test_create_collection_10k_doc() {
+/**
+ * 
+ * @param {String} session_id 
+ */
+async function test_create_collection_10k_doc(session_id) {
     
     await delete_all_collections(databases, DATABASE_ID);
     let COLLECTION_ID = await create_new_collection(databases, DATABASE_ID);
@@ -105,62 +76,57 @@ async function test_create_collection_10k_doc() {
     console.log("## CREATED attrs: " + created_attrs)
 
     // Inform test server to start collecting system status
-    let collect_start_url = "http://" + process.env.SERVER_ADDR + ":" + process.env.SERVER_PORT + process.env.SERVER_STAT_COLLECTION_ADDR
-    let res_start = await req_start_collecting_stat("TEST_STAT").catch(e => { console.log({error: e}) })
+    let res_start = await req_start_collecting_stat(session_id).catch(e => { console.log({error: e}) })
     console.log("## Sent req_start_collecting_stat")
     console.log(res_start)
 
     await sleep_ms(2000)
 
     let max_chunk = 5
-    let max_shard = 300
+    let max_shard = 30
 
-    let chunk_promisses = []
+    let result_all_requests = []
+
+    let chunk_promises = []
     for (let chunk_th = 0; chunk_th < max_chunk; chunk_th++) {
-        console.log("-- Chunk=" + chunk_th)
-        console.time("test_chunk_th=" + chunk_th)
-        let created_promisses = []
-        for (let shard_th = 0; shard_th < max_shard; shard_th++) {
-            data = {}
-            for (let j = max_attr - 1; j >= 0; j--) {
-                data["key_" + j] = "iteration_chunk_th=" + chunk_th + "_shard_th=" + shard_th
+        console.log("-- Adding chunk_th=" + chunk_th)
+        let t0 = performance.now()
+
+        let chunk_prom = new Promise((resolve, reject) => {
+            let shard_promises = []
+            for (let shard_th = 0; shard_th < max_shard; shard_th++) {
+                data = {}
+                for (let j = max_attr - 1; j >= 0; j--) {
+                    data["key_" + j] = "iteration_chunk_th=" + chunk_th + "_shard_th=" + shard_th
+                }
+                shard_promises.push(create_document_and_record_rtt(
+                    databases, DATABASE_ID, COLLECTION_ID, data, chunk_th, shard_th
+                ))
             }
-            created_promisses.push(create_document_and_record_rtt(
-                databases, DATABASE_ID, COLLECTION_ID, data, chunk_th*1000000 + shard_th
-            ))
-        }
-        Promise.all(created_promisses).then((result) => {
-            // console.log(result)
-            console.timeEnd("test_chunk_th=" + chunk_th)
+            Promise.all(shard_promises).then((result) => {
+                // console.log(result)
+                let t1 = performance.now()
+                console.log("++ Chunk completed after " + (t1-t0) + "ms: chunk_th=" + chunk_th)
+                result_all_requests.push(result)
+                resolve()
+            })
         })
+        chunk_promises.push(chunk_prom)
     }
-    let res_stop = await req_stop_collecting_stat("TEST_STAT").catch(e => { console.log({error: e}) })
-    console.log("## Sent req_stop_collecting_stat")
-    console.log(res_stop)
+    await Promise.all(chunk_promises).then((result) => {
+        console.log("## All chunks resolved")
+        req_stop_collecting_stat("TEST_STAT")
+            .catch(e => { console.log({ error: e }) })
+        console.log("## Sent req_stop_collecting_stat")
+    })
+    let filename = "log_client_" + session_id + ".txt"
+    await write_array_of_results_to_file(result_all_requests, filename)
+        .catch(e => { console.log({ error: e }) })
+    console.log("## Done writing data to file filename=" + filename)
+    
 
 }
-test_create_collection_10k_doc()
+test_create_collection_10k_doc("test_session")
 
-
-/* Fill data */
-// for (let i=0; i<2; i++) {
-//     let data = {
-//         username: "_username_" + rand_str(100),
-//         password: "_password_" + rand_str(100),
-//         status: "_status_" + rand_str(100),
-//         bio: "_bio_"  + rand_str(100)
-//     };
-//     // console.log(data);
-
-//     let promise = databases.createDocument(
-//         DATABASE_ID, COLLECTION_ID, ID.unique(), data
-//     );
-    
-//     promise.then(function (response) {
-//         // console.log(response);
-//     }, function (error) {
-//         console.log(error);
-//     });
-// }
 
 

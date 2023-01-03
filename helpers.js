@@ -1,12 +1,49 @@
 const { ID, Databases } = require('node-appwrite');
 const http = require('http');
 const crypto = require("crypto");
+const fs = require('fs');
 
 require('dotenv').config();
 
 function sleep_ms(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+
+/**
+ * 
+ * @param {Array<Array<Object>>} array_data 
+ * @param {String} filepath 
+ * @returns 
+ */
+function write_array_of_results_to_file(array_data, filepath) {
+    const writeStream = fs.createWriteStream(filepath);
+    let errors = []
+    return new Promise((resolve, reject) => {
+        array_data.forEach(ad => {
+            ad.forEach(result => {
+                writeStream.write(`${JSON.stringify(result)}\n`)
+            })
+        })
+
+        // the finish event is emitted when all data has been flushed from the stream
+        writeStream.on('finish', () => {
+           resolve()
+        });
+        
+        // handle the errors on the write process
+        writeStream.on('error', (err) => {
+            errors.push(err)
+        });
+        
+        // close the stream
+        writeStream.end();
+        if (errors.length != 0) {
+            reject(errors)
+        }
+    })     
+}
+
 
 /**
  * 
@@ -20,7 +57,7 @@ function req_start_collecting_stat(session_name) {
     // console.log(url_start)
     return new Promise((resolve, reject) => {
         http.get(url_start, (res) => {
-            console.log('statusCode:', res.statusCode);
+            // console.log('statusCode:', res.statusCode);
             let body = ''; 
             res.on('data', chunk => body += chunk);
             res.on('end', () => {
@@ -52,7 +89,7 @@ function req_stop_collecting_stat(session_name) {
     // console.log(url_stop)
     return new Promise((resolve, reject) => {
         http.get(url_stop, (res) => {
-            console.log('statusCode:', res.statusCode);
+            // console.log('statusCode:', res.statusCode);
             let body = ''; 
             res.on('data', chunk => body += chunk);
             res.on('end', () => {
@@ -124,11 +161,11 @@ function create_document_and_record_rtt(db_obj, database_id, collection_id, data
         function (response) {
             let t3 = performance.now()
             // return response["$id"];
-            return {"chunk_th": chunk_th, "chunk_th": shard_th, "t0": t0, "t3": t3}
+            return {"chunk_th": chunk_th, "shard_th": shard_th, "t0": t0, "t3": t3}
         },
         function (error) {
             // console.log({request_id: request_id, error: error})
-            return {"chunk_th": chunk_th, "chunk_th": shard_th, "t0": t0, "t3": -999, "error": error}
+            return {"chunk_th": chunk_th, "shard_th": shard_th, "t0": t0, "t3": -999, "error": error}
         });
 }
 
@@ -251,7 +288,7 @@ function delete_all_collections(databases, database_id) {
 }
 
 module.exports = {
-    rand_str, sleep_ms, 
+    rand_str, sleep_ms, write_array_of_results_to_file,
     req_start_collecting_stat, req_stop_collecting_stat,
     create_new_collection, delete_all_collections, 
     create_userdb_attributes, create_new_document_user,

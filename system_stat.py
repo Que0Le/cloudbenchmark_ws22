@@ -77,12 +77,15 @@ async def start_collecting(background_tasks: BackgroundTasks, response: Response
     if COLLECTING_STAT:
         COLLECTING_STAT = False
         response.status_code = status.HTTP_400_BAD_REQUEST
-        return {"message": "Task in process. Killing ...", "session_name" : global_session_name, "len_stat": len_stat}
+        return {
+            "message": "Request start-collecting while a task in process. Killing old one ...", 
+            "session_name" : global_session_name, "len_stat": len_stat
+        }
 
     COLLECTING_STAT = True
     global_session_name = session_name
     background_tasks.add_task(collect_stat)
-    return {"message": "Started collecting"}
+    return {"message": "Started collecting", "session_name" : global_session_name}
 
 
 @app.get("/stop-collecting", status_code=status.HTTP_202_ACCEPTED)
@@ -92,7 +95,7 @@ async def stop_collecting(response: Response, session_name: str = ""):
         len_stat = len(stat)
         COLLECTING_STAT = False
         
-        return {"session_name" : global_session_name, "len_stat": len_stat}
+        return {"message": "Client requested stop-collecting", "session_name" : global_session_name, "len_stat": len_stat}
     
     response.status_code = status.HTTP_400_BAD_REQUEST
-    return {"message": "No task in progress", "session_name" : global_session_name, "len_stat": len_stat}
+    return {"message": "Client requested stop-collecting but no task in progress", "session_name" : global_session_name, "len_stat": len_stat}
