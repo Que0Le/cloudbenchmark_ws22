@@ -136,8 +136,7 @@ function create_new_collection(db_obj, database_id) {
             return response["$id"];
         },
         function (error) {
-            console.log(error);
-            return "";
+            return e
         });
 }
 
@@ -178,7 +177,7 @@ function create_document_and_record_rtt(db_obj, database_id, collection_id, data
  * @returns {Promise}
  */
 function create_userdb_attributes(databases, database_id, collection_id) {
-    console.log("Createing attributes for collection: " + collection_id)
+    console.log("Create attributes for collection: " + collection_id)
     let p1 = databases.createStringAttribute(
         database_id, collection_id, "username", 255, true
     )
@@ -239,28 +238,28 @@ function create_attr_for_collection(db_obj, database_id, collection_id, attrs) {
 }
 
 
-/**
- * 
- * @param {Databases} databases 
- * @param {String} database_id 
- * @param {String} collection_id 
- * @param {Object} data 
- * @returns {Promise<string>}
- */
-function create_new_document_user(databases, database_id, collection_id, data) {
-    let promise = databases.createDocument(
-        database_id, collection_id, ID.unique(), data
-    );
+// /**
+//  * 
+//  * @param {Databases} databases 
+//  * @param {String} database_id 
+//  * @param {String} collection_id 
+//  * @param {Object} data 
+//  * @returns {Promise<string>}
+//  */
+// function create_new_document_user(databases, database_id, collection_id, data) {
+//     let promise = databases.createDocument(
+//         database_id, collection_id, ID.unique(), data
+//     );
 
-    return promise.then(
-    function (response) {
-        return response["$id"];
-    }, 
-    function (error) {
-        console.log(error);
-        return "";
-    });
-}
+//     return promise.then(
+//     function (response) {
+//         return response["$id"];
+//     }, 
+//     function (error) {
+//         console.log(error);
+//         return "";
+//     });
+// }
 
 
 
@@ -273,17 +272,17 @@ function create_new_document_user(databases, database_id, collection_id, data) {
 function delete_all_collections(databases, database_id) {
     const promise = databases.listCollections(database_id);
 
-    promise.then(function (response) {
+    return promise.then(function (response) {
         response["collections"].forEach(col => {
             const promise_inner = databases.deleteCollection(database_id, col["$id"]);
             promise_inner.then(function (response_inner) {
                 return response_inner
             }, function (error) {
-                console.log(error);
+                return error;
             });
         })
     }, function (error) {
-        console.log(error);
+        return error;
     });
 }
 
@@ -291,7 +290,7 @@ module.exports = {
     rand_str, sleep_ms, write_array_of_results_to_file,
     req_start_collecting_stat, req_stop_collecting_stat,
     create_new_collection, delete_all_collections, 
-    create_userdb_attributes, create_new_document_user,
+    create_userdb_attributes, 
     create_attr_for_collection, promiseAllInBatches,
     create_document_and_record_rtt
 }
