@@ -170,32 +170,6 @@ function create_document_and_record_rtt(db_obj, database_id, collection_id, data
 
 
 /**
- * 
- * @param {Databases} databases 
- * @param {String} database_id 
- * @param {String} collection_id 
- * @returns {Promise}
- */
-function create_userdb_attributes(databases, database_id, collection_id) {
-    console.log("Create attributes for collection: " + collection_id)
-    let p1 = databases.createStringAttribute(
-        database_id, collection_id, "username", 255, true
-    )
-    let p2 = databases.createStringAttribute(
-        database_id, collection_id, "password", 255, true
-    )
-    let p3 = databases.createStringAttribute(
-        database_id, collection_id, "email", 255, true
-    )
-    let p4 = databases.createStringAttribute(
-        database_id, collection_id, "profile", 255, true
-    )
-    let combined_promise = Promise.all([p1, p2, p3, p4]);
-    return combined_promise;
-}
-
-
-/**
  * Same as Promise.all(items.map(item => task(item))), but it waits for
  * the first {batchSize} promises to finish before starting the next batch.
  * https://stackoverflow.com/a/64543086
@@ -238,31 +212,6 @@ function create_attr_for_collection(db_obj, database_id, collection_id, attrs) {
 }
 
 
-// /**
-//  * 
-//  * @param {Databases} databases 
-//  * @param {String} database_id 
-//  * @param {String} collection_id 
-//  * @param {Object} data 
-//  * @returns {Promise<string>}
-//  */
-// function create_new_document_user(databases, database_id, collection_id, data) {
-//     let promise = databases.createDocument(
-//         database_id, collection_id, ID.unique(), data
-//     );
-
-//     return promise.then(
-//     function (response) {
-//         return response["$id"];
-//     }, 
-//     function (error) {
-//         console.log(error);
-//         return "";
-//     });
-// }
-
-
-
 /**
  * 
  * @param { Databases } databases 
@@ -290,7 +239,6 @@ module.exports = {
     rand_str, sleep_ms, write_array_of_results_to_file,
     req_start_collecting_stat, req_stop_collecting_stat,
     create_new_collection, delete_all_collections, 
-    create_userdb_attributes, 
     create_attr_for_collection, promiseAllInBatches,
     create_document_and_record_rtt
 }

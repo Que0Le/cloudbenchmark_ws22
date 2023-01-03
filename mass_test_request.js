@@ -9,7 +9,6 @@ const {
     rand_str, sleep_ms, write_array_of_results_to_file,
     req_start_collecting_stat, req_stop_collecting_stat,
     create_new_collection, delete_all_collections, 
-    create_userdb_attributes,
     create_attr_for_collection, 
     create_document_and_record_rtt
 } = require('./helpers');
@@ -27,54 +26,17 @@ client
 ;
 
 
-let DATABASE_ID = "638e7d2d73a3e15dc541";
-async function main() {
-    console.time("main")
-    await delete_all_collections(databases, DATABASE_ID).catch(e => {
-        console.log("Error delete_all_collections:")
-        console.log(e)
-    })
-    let COLLECTION_ID = "";
-    COLLECTION_ID = await create_new_collection(databases, DATABASE_ID).catch(e => {
-        console.log("Error create_new_collection:")
-        console.log(e)
-    })
-    console.log("## CREATED COLLECTION_ID=" + COLLECTION_ID)
-    await create_userdb_attributes(databases, DATABASE_ID, COLLECTION_ID).catch(e => {
-        console.log("Error create_userdb_attributes:")
-        console.log(e)
-    })
-    await sleep_ms(1000)
-    let created_promisses = []
-    for (let i = 0; i < 5000; i++) {
-        created_promisses.push(create_new_document_user(
-            databases, DATABASE_ID, COLLECTION_ID, {
-                "password": "password" + "_" + i,
-                "username": "username" + "_" + i,
-                "email": "email" + "_" + i,
-                "profile": "profile" + "_" + i,
-            }
-        ))
-    }
-    Promise.all(created_promisses).then((result) => {
-        console.timeEnd("main")
-    })
-}
-
-
-// main()
-
 /**
  * 
  * @param {String} session_id 
  */
 async function test_create_collection_10k_doc(session_id) {
     
-    await delete_all_collections(databases, DATABASE_ID).catch(e => {
+    await delete_all_collections(databases, process.env.APPWRITE_DATABASE).catch(e => {
         console.log("Error delete_all_collections:")
         console.log(e)
     })
-    let COLLECTION_ID = await create_new_collection(databases, DATABASE_ID).catch(e => {
+    let COLLECTION_ID = await create_new_collection(databases, process.env.APPWRITE_DATABASE).catch(e => {
         console.log("Error create_new_collection:")
         console.log(e)
     })
@@ -85,7 +47,7 @@ async function test_create_collection_10k_doc(session_id) {
     for (let i=0; i<max_attr; i++) {
         attrs.push({"attr_key": "key_" + i, "attr_size": 255, "attr_required": true})
     }
-    let created_attrs = await create_attr_for_collection(databases, DATABASE_ID, COLLECTION_ID, attrs)
+    let created_attrs = await create_attr_for_collection(databases, process.env.APPWRITE_DATABASE, COLLECTION_ID, attrs)
         .catch(e => {
             console.log("Error create_attr_for_collection:")
             console.log(e)
@@ -117,13 +79,13 @@ async function test_create_collection_10k_doc(session_id) {
                     data["key_" + j] = "iteration_chunk_th=" + chunk_th + "_shard_th=" + shard_th
                 }
                 shard_promises.push(create_document_and_record_rtt(
-                    databases, DATABASE_ID, COLLECTION_ID, data, chunk_th, shard_th
+                    databases, process.env.APPWRITE_DATABASE, COLLECTION_ID, data, chunk_th, shard_th
                 ))
             }
             Promise.allSettled(shard_promises).then((result) => {
                 // console.log(result)
                 let t1 = performance.now()
-                console.log("++ Chunk completed after " + (t1-t0) + "ms: chunk_th=" + chunk_th)
+                console.log("++ Chunk completed after " + (t1-t0) + " ms: chunk_th=" + chunk_th)
                 result_all_requests.push(result)
                 resolve()
             })
