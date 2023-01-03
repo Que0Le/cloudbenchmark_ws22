@@ -11,7 +11,7 @@ function sleep_ms(ms) {
 /**
  * 
  * @param {String} session_name Session name to to name the log file
- * @returns {Promise} 
+ * @returns {Promise} message body
  */
 function req_start_collecting_stat(session_name) {
     let url_start =
@@ -42,8 +42,8 @@ function req_start_collecting_stat(session_name) {
 
 /**
  * 
- * @param {String}
- * @returns {Promise} 
+ * @param {String} session_name Session name to to name the log file
+ * @returns {Promise} message body
  */
 function req_stop_collecting_stat(session_name) {
     let url_stop =
@@ -77,7 +77,7 @@ function req_stop_collecting_stat(session_name) {
  * each byte encoded to hex is 2 characters. 20 bytes will be 40 characters of hex. 
  * https://stackoverflow.com/a/27747377
  * @param {String} length 
- * @returns {String} a string with length 2xlength
+ * @returns {String} a string with len = 2 x _**length**_
  */
 function rand_str(length) {
     return crypto.randomBytes(length).toString('hex');
@@ -111,10 +111,11 @@ function create_new_collection(db_obj, database_id) {
  * @param {String} database_id  
  * @param {String} collection_id 
  * @param {Object} data 
- * @param {int} request_id 
+ * @param {int} chunk_th 
+ * @param {int} shard_th 
  * @returns {Promise<string>}
  */
-function create_document_and_record_rtt(db_obj, database_id, collection_id, data, request_id) {
+function create_document_and_record_rtt(db_obj, database_id, collection_id, data, chunk_th, shard_th) {
     let t0 = performance.now()
     let promise = db_obj.createDocument(
         database_id, collection_id, ID.unique(), data
@@ -123,11 +124,11 @@ function create_document_and_record_rtt(db_obj, database_id, collection_id, data
         function (response) {
             let t3 = performance.now()
             // return response["$id"];
-            return {"request_id": request_id, "t0": t0, "t3": t3}
+            return {"chunk_th": chunk_th, "chunk_th": shard_th, "t0": t0, "t3": t3}
         },
         function (error) {
             // console.log({request_id: request_id, error: error})
-            return {"request_id": request_id, "rtt": -9999};
+            return {"chunk_th": chunk_th, "chunk_th": shard_th, "t0": t0, "t3": -999, "error": error}
         });
 }
 

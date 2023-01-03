@@ -4,4 +4,6 @@ env
 outputfile.txt
 __pycache__
 .env
-*.txt
+log_sut_*.txt
+log_sut_*.json
+test_*

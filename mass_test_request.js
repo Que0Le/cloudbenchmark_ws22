@@ -112,25 +112,26 @@ async function test_create_collection_10k_doc() {
 
     await sleep_ms(2000)
 
-    max_chunk = 5
-    max_shard = 300
+    let max_chunk = 5
+    let max_shard = 300
 
+    let chunk_promisses = []
     for (let chunk_th = 0; chunk_th < max_chunk; chunk_th++) {
         console.log("-- Chunk=" + chunk_th)
-        console.time("test_create_collection_10k_doc")
+        console.time("test_chunk_th=" + chunk_th)
         let created_promisses = []
         for (let shard_th = 0; shard_th < max_shard; shard_th++) {
             data = {}
             for (let j = max_attr - 1; j >= 0; j--) {
-                data["key_" + j] = "iteration_" + chunk_th*1000000 + shard_th
+                data["key_" + j] = "iteration_chunk_th=" + chunk_th + "_shard_th=" + shard_th
             }
             created_promisses.push(create_document_and_record_rtt(
                 databases, DATABASE_ID, COLLECTION_ID, data, chunk_th*1000000 + shard_th
             ))
         }
-        await Promise.all(created_promisses).then((result) => {
+        Promise.all(created_promisses).then((result) => {
             // console.log(result)
-            console.timeEnd("test_create_collection_10k_doc")
+            console.timeEnd("test_chunk_th=" + chunk_th)
         })
     }
     let res_stop = await req_stop_collecting_stat("TEST_STAT").catch(e => { console.log({error: e}) })

@@ -41,7 +41,10 @@ def collect_stat():
     if global_session_name != "":
         filename = global_session_name
 
-    with open(filename + ".txt", 'w') as fout:
+    with open("log_sut_" + filename + ".txt", 'w') as fout:
+        for s in stat:
+            print(s, file=fout)
+    with open("log_sut_" + filename + ".json", 'w') as fout:
         json.dump(stat, fout)
     # clear data
     stat = []
