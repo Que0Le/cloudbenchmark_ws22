@@ -5,7 +5,8 @@ require('dotenv').config();
 let SERVER_ADDR  = process.env.SERVER_ADDR
 
 const { 
-    rand_str, sleep_ms, request_collecting_stat,
+    rand_str, sleep_ms, 
+    req_start_collecting_stat, req_stop_collecting_stat,
     create_new_collection, delete_all_collections, 
     create_userdb_attributes, create_new_document_user,
     create_attr_for_collection, promiseAllInBatches,
@@ -105,12 +106,14 @@ async function test_create_collection_10k_doc() {
 
     // Inform test server to start collecting system status
     let collect_start_url = "http://" + process.env.SERVER_ADDR + ":" + process.env.SERVER_PORT + process.env.SERVER_STAT_COLLECTION_ADDR
-    request_collecting_stat(collect_start_url)
+    let res_start = await req_start_collecting_stat("TEST_STAT").catch(e => { console.log({error: e}) })
+    console.log("## Sent req_start_collecting_stat")
+    console.log(res_start)
 
     await sleep_ms(2000)
 
     max_chunk = 5
-    max_shard = 1000
+    max_shard = 300
 
     for (let chunk_th = 0; chunk_th < max_chunk; chunk_th++) {
         console.log("-- Chunk=" + chunk_th)
@@ -130,7 +133,9 @@ async function test_create_collection_10k_doc() {
             console.timeEnd("test_create_collection_10k_doc")
         })
     }
-    request_collecting_stat(collect_start_url)
+    let res_stop = await req_stop_collecting_stat("TEST_STAT").catch(e => { console.log({error: e}) })
+    console.log("## Sent req_stop_collecting_stat")
+    console.log(res_stop)
 
 }
 test_create_collection_10k_doc()

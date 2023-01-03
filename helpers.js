@@ -1,7 +1,8 @@
 const { ID, Databases } = require('node-appwrite');
 const http = require('http');
-
 const crypto = require("crypto");
+
+require('dotenv').config();
 
 function sleep_ms(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -9,20 +10,65 @@ function sleep_ms(ms) {
 
 /**
  * 
- * @param {String} collect_start_url Server collection signal path, ie "http://192.168.1.32:8888/collect-stat"
+ * @param {String} session_name Session name to to name the log file
+ * @returns {Promise} 
  */
-function request_collecting_stat(collect_start_url) {
-    http.get(collect_start_url, (res) => {
-        console.log('statusCode:', res.statusCode);
-        console.log('headers:', res.headers);
+function req_start_collecting_stat(session_name) {
+    let url_start =
+        "http://" + process.env.SERVER_ADDR + ":" + process.env.SERVER_PORT +
+        process.env.SERVER_START_COLLECTING_ADDR + "/?session_name=" + session_name
+    // console.log(url_start)
+    return new Promise((resolve, reject) => {
+        http.get(url_start, (res) => {
+            console.log('statusCode:', res.statusCode);
+            let body = ''; 
+            res.on('data', chunk => body += chunk);
+            res.on('end', () => {
+                // process.stdout.write(d);
+                if (res.statusCode != 201) {
+                    reject(body)
+                }
+                // console.log(JSON.parse(body))
+                resolve(JSON.parse(body))
+            });
 
-        res.on('data', (d) => {
-            // process.stdout.write(d);
+        }).on('error', (e) => {
+            console.error(e);
+            reject(body)
         });
+    })
+}
 
-    }).on('error', (e) => {
-        console.error(e);
-    });
+
+/**
+ * 
+ * @param {String}
+ * @returns {Promise} 
+ */
+function req_stop_collecting_stat(session_name) {
+    let url_stop =
+        "http://" + process.env.SERVER_ADDR + ":" + process.env.SERVER_PORT +
+        process.env.SERVER_STOP_COLLECTING_ADDR //+ "/?session_name=" + session_name
+    // console.log(url_stop)
+    return new Promise((resolve, reject) => {
+        http.get(url_stop, (res) => {
+            console.log('statusCode:', res.statusCode);
+            let body = ''; 
+            res.on('data', chunk => body += chunk);
+            res.on('end', () => {
+                // process.stdout.write(d);
+                if (res.statusCode != 202) {
+                    reject(body)
+                }
+                // console.log(JSON.parse(body))
+                resolve(JSON.parse(body))
+            });
+
+        }).on('error', (e) => {
+            console.error(e);
+            reject(body)
+        });
+    })
 }
 
 
@@ -204,7 +250,8 @@ function delete_all_collections(databases, database_id) {
 }
 
 module.exports = {
-    rand_str, sleep_ms, request_collecting_stat,
+    rand_str, sleep_ms, 
+    req_start_collecting_stat, req_stop_collecting_stat,
     create_new_collection, delete_all_collections, 
     create_userdb_attributes, create_new_document_user,
     create_attr_for_collection, promiseAllInBatches,

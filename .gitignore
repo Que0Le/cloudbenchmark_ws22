@@ -4,3 +4,4 @@ env
 outputfile.txt
 __pycache__
 .env
+*.txt
