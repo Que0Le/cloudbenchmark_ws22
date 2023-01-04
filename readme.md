@@ -31,5 +31,9 @@ docker run -it --rm \
 python3 -m venv env
 source env/bin/activate
 
+python3 -m pip install pip install requirements.txt
 uvicorn system_stat:app --host 0.0.0.0 --port 8888
+
+# extract deps
+# pip freeze > requirements.txt
 ```

@@ -43,7 +43,7 @@ def collect_stat():
 
     with open("log_sut_" + filename + ".txt", 'w') as fout:
         for s in stat:
-            print(s, file=fout)
+            print(json.dumps(s), file=fout)
     with open("log_sut_" + filename + ".json", 'w') as fout:
         json.dump(stat, fout)
     # clear data
@@ -79,7 +79,7 @@ async def start_collecting(background_tasks: BackgroundTasks, response: Response
         response.status_code = status.HTTP_400_BAD_REQUEST
         return {
             "message": "Request start-collecting while a task in process. Killing old one ...", 
-            "session_name" : global_session_name, "len_stat": len_stat
+            "session_name" : global_session_name, "len_stat": len(stat)
         }
 
     COLLECTING_STAT = True

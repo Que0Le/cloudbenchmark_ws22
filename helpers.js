@@ -160,36 +160,13 @@ function create_document_and_record_rtt(db_obj, database_id, collection_id, data
         function (response) {
             let t3 = performance.now()
             // return response["$id"];
+            // console.log({"chunk_th": chunk_th, "shard_th": shard_th, "t0": t0, "t3": t3})
             return {"chunk_th": chunk_th, "shard_th": shard_th, "t0": t0, "t3": t3}
         },
         function (error) {
             // console.log({request_id: request_id, error: error})
             return {"chunk_th": chunk_th, "shard_th": shard_th, "t0": t0, "t3": -999, "error": error}
         });
-}
-
-
-/**
- * Same as Promise.all(items.map(item => task(item))), but it waits for
- * the first {batchSize} promises to finish before starting the next batch.
- * https://stackoverflow.com/a/64543086
- *
- * @template A
- * @template B
- * @param {function(A): B} task The task to run for each item.
- * @param {A[]} items Arguments to pass to the task for each call.
- * @param {int} batchSize
- * @returns {Promise<B[]>}
- */
-async function promiseAllInBatches(task, items, batchSize) {
-    let position = 0;
-    let results = [];
-    while (position < items.length) {
-        const itemsForBatch = items.slice(position, position + batchSize);
-        results = [...results, ...await Promise.all(itemsForBatch.map(item => task(item)))];
-        position += batchSize;
-    }
-    return results;
 }
 
 
@@ -239,6 +216,6 @@ module.exports = {
     rand_str, sleep_ms, write_array_of_results_to_file,
     req_start_collecting_stat, req_stop_collecting_stat,
     create_new_collection, delete_all_collections, 
-    create_attr_for_collection, promiseAllInBatches,
+    create_attr_for_collection,
     create_document_and_record_rtt
 }

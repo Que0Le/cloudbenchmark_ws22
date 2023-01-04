@@ -54,15 +54,10 @@ async function test_create_collection_10k_doc(session_id) {
         })
     console.log("## CREATED " + created_attrs.length + " attrs")
 
-    // Inform test server to start collecting system status
-    let res_start = await req_start_collecting_stat(session_id).catch(e => { console.log({error: e}); return })
-    console.log("## Sent req_start_collecting_stat")
-    console.log(res_start)
-
     await sleep_ms(2000)
 
-    let max_chunk = 5
-    let max_shard = 30
+    let max_chunk = 50
+    let max_shard = 500
 
     let result_all_requests = []
 
@@ -92,6 +87,12 @@ async function test_create_collection_10k_doc(session_id) {
         })
         chunk_promises.push(chunk_prom)
     }
+
+    // Inform test server to start collecting system status
+    let res_start = await req_start_collecting_stat(session_id).catch(e => { console.log({error: e}); return })
+    console.log("## Sent req_start_collecting_stat")
+    console.log(res_start)
+
     await Promise.all(chunk_promises).then((result) => {
         console.log("## All chunks resolved")
         req_stop_collecting_stat("TEST_STAT")
