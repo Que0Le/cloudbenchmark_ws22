@@ -30,7 +30,7 @@ client
  * 
  * @param {String} session_id 
  */
-async function test_create_collection_10k_doc(session_id) {
+async function test_no_promises_request(session_id) {
     
     await delete_all_collections(databases, process.env.APPWRITE_DATABASE).catch(e => {
         console.log("Error delete_all_collections:")
@@ -56,8 +56,8 @@ async function test_create_collection_10k_doc(session_id) {
 
     await sleep_ms(2000)
 
-    let max_chunk = 20
-    let max_shard = 300
+    let max_chunk = 1
+    let max_shard = 10
 
     let result_all_requests = []
 
@@ -95,7 +95,7 @@ async function test_create_collection_10k_doc(session_id) {
 
     await Promise.all(chunk_promises).then((result) => {
         console.log("## All chunks resolved")
-        req_stop_collecting_stat("TEST_STAT")
+        req_stop_collecting_stat(session_id)
             .catch(e => { console.log({ error: e }) })
         console.log("## Sent req_stop_collecting_stat")
     })
@@ -106,7 +106,132 @@ async function test_create_collection_10k_doc(session_id) {
     
 
 }
-test_create_collection_10k_doc("test_session")
+// test_create_collection_10k_doc("test_session")
+
+                                                                                                                                                                                                                                                                                            
+
+/**
+ * 
+ * @param {String} session_id 
+ */
+async function test_no_promises_req(session_id) {
+    
+    await delete_all_collections(databases, process.env.APPWRITE_DATABASE).catch(e => {
+        console.log("Error delete_all_collections:")
+        console.log(e)
+    })
+    let COLLECTION_ID = await create_new_collection(databases, process.env.APPWRITE_DATABASE).catch(e => {
+        console.log("Error create_new_collection:")
+        console.log(e)
+    })
+    console.log("## CREATED COLLECTION_ID=" + COLLECTION_ID);
+
+    let max_attr = 10
+    attrs = []
+    for (let i=0; i<max_attr; i++) {
+        attrs.push({"attr_key": "key_" + i, "attr_size": 255, "attr_required": true})
+    }
+    let created_attrs = await create_attr_for_collection(databases, process.env.APPWRITE_DATABASE, COLLECTION_ID, attrs)
+        .catch(e => {
+            console.log("Error create_attr_for_collection:")
+            console.log(e)
+        })
+    console.log("## CREATED " + created_attrs.length + " attrs")
+
+    await sleep_ms(2000)
+
+    // let max_chunk = 1
+    // let max_shard = 10
+
+    let result_all_requests = []
+
+    // let chunk_promises = []
+    // for (let chunk_th = 0; chunk_th < max_chunk; chunk_th++) {
+    //     console.log("-- Adding chunk_th=" + chunk_th)
+    //     let t0 = performance.now()
+
+    //     let chunk_prom = new Promise((resolve, reject) => {
+    //         let shard_promises = []
+    //         for (let shard_th = 0; shard_th < max_shard; shard_th++) {
+    //             data = {}
+    //             for (let j = max_attr - 1; j >= 0; j--) {
+    //                 data["key_" + j] = "iteration_chunk_th=" + chunk_th + "_shard_th=" + shard_th
+    //             }
+    //             shard_promises.push(create_document_and_record_rtt(
+    //                 databases, process.env.APPWRITE_DATABASE, COLLECTION_ID, data, chunk_th, shard_th
+    //             ))
+    //         }
+    //         Promise.allSettled(shard_promises).then((result) => {
+    //             // console.log(result)
+    //             let t1 = performance.now()
+    //             console.log("++ Chunk completed after " + (t1-t0) + " ms: chunk_th=" + chunk_th)
+    //             result_all_requests.push(result)
+    //             resolve()
+    //         })
+    //     })
+    //     chunk_promises.push(chunk_prom)
+    // }
+
+    // Inform test server to start collecting system status
+    let res_start = await req_start_collecting_stat(session_id).catch(e => { console.log({error: e}); return })
+    console.log("## Sent req_start_collecting_stat")
+    console.log(res_start)
+    await sleep_ms(100)
+
+    let max_req = 500
+    for (let i = 0; i < max_req; i++) {
+        data = {}
+        for (let j = max_attr - 1; j >= 0; j--) {
+            data["key_" + j] = "iteration_chunk_th=" + i + "_shard_th=" + 0
+        }
+        // result_all_requests.push(create_document_and_record_rtt(
+        //     databases, process.env.APPWRITE_DATABASE, COLLECTION_ID, data, i, 0
+        // )
+        //     .catch(e => { return e })
+        // )
+        create_document_and_record_rtt(
+            databases, process.env.APPWRITE_DATABASE, COLLECTION_ID, data, i, 0
+        )
+            .then(result => { result_all_requests.push(result) })
+            .catch(e => { return e })
+    }
+    
+    let has_exported_data = false
+    let filename = "log_client_" + session_id + ".txt"
+    while (!has_exported_data) {
+        if (max_req == result_all_requests.length) {
+            // console.log(result_all_requests)
+            console.log("## All chunks resolved")
+            req_stop_collecting_stat(session_id)
+                .then(r => {
+                    console.log("## Sent req_stop_collecting_stat")
+                    write_array_of_results_to_file(result_all_requests, filename, is_2d = false)
+                        .then(r => {
+                            console.log("## Done writing data to file filename=" + filename);
+                            has_exported_data = true
+                        })
+                })
+                .catch(e => { console.log({ error: e }) })
+        }
+        await sleep_ms(100)
+    }
+
+
+
+    // await Promise.all(chunk_promises).then((result) => {
+    //     console.log("## All chunks resolved")
+    //     req_stop_collecting_stat(session_id)
+    //         .catch(e => { console.log({ error: e }) })
+    //     console.log("## Sent req_stop_collecting_stat")
+    // })
+    // let filename = "log_client_" + session_id + ".txt"
+    // await write_array_of_results_to_file(result_all_requests, filename)
+    //     .catch(e => { console.log({ error: e }) })
+    // console.log("## Done writing data to file filename=" + filename)
+    
+
+}
+test_no_promises_req("test_session")
 
 
 

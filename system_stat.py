@@ -30,7 +30,7 @@ def collect_stat():
     while COLLECTING_STAT and not AppStatus.should_exit:
         cpu_per = psutil.cpu_percent(interval=None, percpu=True)
         ram_per = psutil.virtual_memory()[2]
-        stat.append({"index": index, "cpu_per": cpu_per, "ram_per": ram_per, "timestamp": time.time()})
+        stat.append({"index": index, "cpu_per": cpu_per, "ram_per": ram_per, "timestamp": round(time.time()*1000)})
         if index%20 == 0:
             print(f"-- Collected data session_name={global_session_name}, current i={index} ...")
         index = index + 1

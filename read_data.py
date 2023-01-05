@@ -1,6 +1,6 @@
 # Load up JSON Function
 import json
-
+import numpy as np
 # Open our JSON file and load it into python
 # input_file = open ("outputfile.txt")
 # json_array = json.load(input_file)
@@ -14,8 +14,20 @@ log_client_path = "log_client_" + session_id + ".txt"
 
 
 
-with open(log_sut_path) as log_sut_f:
-    for line in log_sut_f:
+client_t3_t0 = []
+client_data = []
+
+with open(log_client_path) as log_client_f:
+    for line in log_client_f:
         res = json.loads(line)
-        print(res[0])
-        break
+        client_data.append(res)
+        client_t3_t0.append(res["t3"] - res["t0"])
+
+print(np.percentile(client_t3_t0, 95))
+print(np.std(client_t3_t0, ddof=1))
+
+# sorted_client_data = sorted(client_data, key=lambda k : k["value"]["t0"]) 
+
+# with open(f"log_client_{session_id}_sorted.txt" , 'w') as fout:
+#     for d in sorted_client_data:
+#         print(json.dumps(d), file=fout)

@@ -16,15 +16,21 @@ function sleep_ms(ms) {
  * @param {String} filepath 
  * @returns 
  */
-function write_array_of_results_to_file(array_data, filepath) {
+function write_array_of_results_to_file(array_data, filepath, is_2d = true) {
     const writeStream = fs.createWriteStream(filepath);
     let errors = []
     return new Promise((resolve, reject) => {
-        array_data.forEach(ad => {
-            ad.forEach(result => {
+        if (is_2d) {
+            array_data.forEach(ad => {
+                ad.forEach(result => {
+                    writeStream.write(`${JSON.stringify(result)}\n`)
+                })
+            })
+        } else {
+            array_data.forEach(result => {
                 writeStream.write(`${JSON.stringify(result)}\n`)
             })
-        })
+        }
 
         // the finish event is emitted when all data has been flushed from the stream
         writeStream.on('finish', () => {
@@ -152,13 +158,13 @@ function create_new_collection(db_obj, database_id) {
  * @returns {Promise<string>}
  */
 function create_document_and_record_rtt(db_obj, database_id, collection_id, data, chunk_th, shard_th) {
-    let t0 = performance.now()
+    let t0 = new Date().getTime() //performance.now()
     let promise = db_obj.createDocument(
         database_id, collection_id, ID.unique(), data
     );
     return promise.then(
         function (response) {
-            let t3 = performance.now()
+            let t3 = new Date().getTime() //performance.now()
             // return response["$id"];
             // console.log({"chunk_th": chunk_th, "shard_th": shard_th, "t0": t0, "t3": t3})
             return {"chunk_th": chunk_th, "shard_th": shard_th, "t0": t0, "t3": t3}
