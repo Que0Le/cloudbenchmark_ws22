@@ -56,8 +56,8 @@ async function test_create_collection_10k_doc(session_id) {
 
     await sleep_ms(2000)
 
-    let max_chunk = 50
-    let max_shard = 500
+    let max_chunk = 20
+    let max_shard = 300
 
     let result_all_requests = []
 
