@@ -110,8 +110,8 @@ async function handle_master() {
     console.log(`++ Master ${process.pid} is running`);
     let current_task = 0
     let task_th_done = 0
-    const MAX_NBR_TASK = 12
-    const task_size = 500
+    const MAX_NBR_TASK = 120
+    const task_size = 100
     
     // Fork workers.
     let workers = []
