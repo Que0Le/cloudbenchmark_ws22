@@ -14,10 +14,12 @@ function sleep_ms(ms) {
  * 
  * @param {Array<Array<Object>>} array_data 
  * @param {String} filepath 
+ * @param {boolean} is_2d 
+ * @param {boolean} is_append 
  * @returns 
  */
-function write_array_of_results_to_file(array_data, filepath, is_2d = true) {
-    const writeStream = fs.createWriteStream(filepath);
+function write_array_of_results_to_file(array_data, filepath, is_2d = true, is_append = false) {
+    const writeStream = fs.createWriteStream(filepath, {flags: is_append ? 'a' : 'w'});
     let errors = []
     return new Promise((resolve, reject) => {
         if (is_2d) {

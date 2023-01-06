@@ -139,38 +139,7 @@ async function test_no_promises_req(session_id) {
     console.log("## CREATED " + created_attrs.length + " attrs")
 
     await sleep_ms(2000)
-
-    // let max_chunk = 1
-    // let max_shard = 10
-
     let result_all_requests = []
-
-    // let chunk_promises = []
-    // for (let chunk_th = 0; chunk_th < max_chunk; chunk_th++) {
-    //     console.log("-- Adding chunk_th=" + chunk_th)
-    //     let t0 = performance.now()
-
-    //     let chunk_prom = new Promise((resolve, reject) => {
-    //         let shard_promises = []
-    //         for (let shard_th = 0; shard_th < max_shard; shard_th++) {
-    //             data = {}
-    //             for (let j = max_attr - 1; j >= 0; j--) {
-    //                 data["key_" + j] = "iteration_chunk_th=" + chunk_th + "_shard_th=" + shard_th
-    //             }
-    //             shard_promises.push(create_document_and_record_rtt(
-    //                 databases, process.env.APPWRITE_DATABASE, COLLECTION_ID, data, chunk_th, shard_th
-    //             ))
-    //         }
-    //         Promise.allSettled(shard_promises).then((result) => {
-    //             // console.log(result)
-    //             let t1 = performance.now()
-    //             console.log("++ Chunk completed after " + (t1-t0) + " ms: chunk_th=" + chunk_th)
-    //             result_all_requests.push(result)
-    //             resolve()
-    //         })
-    //     })
-    //     chunk_promises.push(chunk_prom)
-    // }
 
     // Inform test server to start collecting system status
     let res_start = await req_start_collecting_stat(session_id).catch(e => { console.log({error: e}); return })
@@ -184,11 +153,6 @@ async function test_no_promises_req(session_id) {
         for (let j = max_attr - 1; j >= 0; j--) {
             data["key_" + j] = "iteration_chunk_th=" + i + "_shard_th=" + 0
         }
-        // result_all_requests.push(create_document_and_record_rtt(
-        //     databases, process.env.APPWRITE_DATABASE, COLLECTION_ID, data, i, 0
-        // )
-        //     .catch(e => { return e })
-        // )
         create_document_and_record_rtt(
             databases, process.env.APPWRITE_DATABASE, COLLECTION_ID, data, i, 0
         )
@@ -215,21 +179,6 @@ async function test_no_promises_req(session_id) {
         }
         await sleep_ms(100)
     }
-
-
-
-    // await Promise.all(chunk_promises).then((result) => {
-    //     console.log("## All chunks resolved")
-    //     req_stop_collecting_stat(session_id)
-    //         .catch(e => { console.log({ error: e }) })
-    //     console.log("## Sent req_stop_collecting_stat")
-    // })
-    // let filename = "log_client_" + session_id + ".txt"
-    // await write_array_of_results_to_file(result_all_requests, filename)
-    //     .catch(e => { console.log({ error: e }) })
-    // console.log("## Done writing data to file filename=" + filename)
-    
-
 }
 test_no_promises_req("test_session")
 
