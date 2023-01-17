@@ -172,7 +172,7 @@ function create_document_and_record_rtt(db_obj, database_id, collection_id, data
             return {"chunk_th": chunk_th, "shard_th": shard_th, "t0": t0, "t3": t3}
         },
         function (error) {
-            // console.log({request_id: request_id, error: error})
+            console.log({chunk_th: chunk_th, shard_th: shard_th, error: error})
             return {"chunk_th": chunk_th, "shard_th": shard_th, "t0": t0, "t3": -999, "error": error}
         });
 }

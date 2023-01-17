@@ -82,7 +82,7 @@ async function request_worker(COLLECTION_ID, session_id, worker_id, number_of_re
             databases, process.env.APPWRITE_DATABASE, COLLECTION_ID, data, i, 0
         )
             .then(result => { result_all_requests.push(result) })
-            .catch(e => { return e })
+            .catch(e => { console.log(e); return e })
     }
     
     let has_exported_data = false
@@ -111,7 +111,7 @@ async function handle_master() {
     let current_task = 0
     let task_th_done = 0
     const MAX_NBR_TASK = 120
-    const task_size = 100
+    const task_size = 1
     
     // Fork workers.
     let workers = []
@@ -137,37 +137,42 @@ async function handle_master() {
     for (let i=0; i<totalCPUs; i++) {
         // fs.createWriteStream(`log_client_${worker_id}_${session_id}.txt`); // clear old log files
         workers[i].send({"task_id": current_task++, "task_size": task_size})
+        await sleep_ms(100)
     }
     
     while (true) {
         // console.log(task_th_done)
         if (task_th_done == MAX_NBR_TASK) {
             req_stop_collecting_stat(session_id)
-            .then(r => {console.log("## Sent req_stop_collecting_stat")})
+            .then(r => {console.log("## Sent req_stop_collecting_stat"); process.exit()})
             .catch(e => { console.log({ error: e }) })
+
             break
         }
-        await sleep_ms(100)
+        await sleep_ms(10)
     }
 }
-if (cluster.isMaster) {
 
-    handle_master()
-
-} else {
-    console.log(`-- Worker ${cluster.worker.id} started.`)
-    process.on("message", (msg) => {
-        // console.log(process.pid)
-        if ("exit_now" in msg) {
-            // Exit  
-        } else if ("task_size" in msg) {
-            // console.log(cluster.worker.id)
-            request_worker(msg.COLLECTION_ID, session_id, cluster.worker.id, msg.task_size)
-                .then(r => {
-                    console.log(`-- Worker ${cluster.worker.id} done task_id=${msg.task_id}, task_size=${msg.task_size}`)
-                    process.send({ worker_id: cluster.worker.id, task_id: msg.task_id, task_size: msg.task_size });
-                })
-        }
-    })
-
+function main() {
+    if (cluster.isMaster) {
+        handle_master()
+    } else {
+        console.log(`-- Worker ${cluster.worker.id} started.`)
+        process.on("message", (msg) => {
+            // console.log(process.pid)
+            if ("exit_now" in msg) {
+                // Exit  
+            } else if ("task_size" in msg) {
+                // console.log(cluster.worker.id)
+                request_worker(msg.COLLECTION_ID, session_id, cluster.worker.id, msg.task_size)
+                    .then(r => {
+                        console.log(`-- Worker ${cluster.worker.id} done task_id=${msg.task_id}, task_size=${msg.task_size}`)
+                        process.send({ worker_id: cluster.worker.id, task_id: msg.task_id, task_size: msg.task_size });
+                    })
+            }
+        })
+    }
 }
+
+
+main()
