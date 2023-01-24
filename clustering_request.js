@@ -60,7 +60,7 @@ async function clear_appwrite() {
 
     return COLLECTION_ID
 }
-// clear_appwrite()
+
 
 /**
  * 
@@ -69,7 +69,11 @@ async function clear_appwrite() {
  * @param {int} number_of_request 
  */
 async function request_worker(COLLECTION_ID, session_id, worker_id, number_of_request) {
-    // await sleep_ms(100)
+
+    // Sometime param can be null
+    if (!COLLECTION_ID || !session_id || !worker_id || !number_of_request) {
+        return "request_worker error: some param null!"
+    }
 
     let result_all_requests = []
 
@@ -99,6 +103,8 @@ async function request_worker(COLLECTION_ID, session_id, worker_id, number_of_re
         }
         await sleep_ms(10)
     }
+
+    return ""
 }
 
 const session_id = "test_session"
@@ -110,8 +116,8 @@ async function handle_master() {
     console.log(`++ Master ${process.pid} is running`);
     let current_task = 0
     let task_th_done = 0
-    const MAX_NBR_TASK = 120
-    const task_size = 1
+    const MAX_NBR_TASK = parseInt(process.argv[2])
+    const task_size = parseInt(process.argv[3])
     
     // Fork workers.
     let workers = []
@@ -119,8 +125,11 @@ async function handle_master() {
         let worker = cluster.fork();
         worker.on('message', function (msg) {
             if ("task_id" in msg) {
-                console.log(msg.task_id, task_th_done++)
-                let new_task_id = current_task++;
+                let new_task_id = current_task;
+                if (!("task_error" in msg)) {
+                    console.log(msg.task_id, task_th_done++)
+                    new_task_id = current_task++;
+                }
                 if (new_task_id < MAX_NBR_TASK) {
                     console.log(`++ Master => ${msg.worker_id}: ok, new task_id=${new_task_id}`)
                     worker.send({
@@ -153,9 +162,9 @@ async function handle_master() {
     }
 }
 
-function main() {
+async function main() {
     if (cluster.isMaster) {
-        handle_master()
+        await handle_master()
     } else {
         console.log(`-- Worker ${cluster.worker.id} started.`)
         process.on("message", (msg) => {
@@ -166,8 +175,13 @@ function main() {
                 // console.log(cluster.worker.id)
                 request_worker(msg.COLLECTION_ID, session_id, cluster.worker.id, msg.task_size)
                     .then(r => {
-                        console.log(`-- Worker ${cluster.worker.id} done task_id=${msg.task_id}, task_size=${msg.task_size}`)
-                        process.send({ worker_id: cluster.worker.id, task_id: msg.task_id, task_size: msg.task_size });
+                        if (!r) {
+                            console.log(`-- Worker ${cluster.worker.id} done task_id=${msg.task_id}, task_size=${msg.task_size}`)
+                            process.send({ worker_id: cluster.worker.id, task_id: msg.task_id, task_size: msg.task_size });
+                        } else {
+                            console.log(`-- Worker ${cluster.worker.id} ERROR task_id=${msg.task_id}, task_size=${msg.task_size}: ${r}`)
+                            process.send({ worker_id: cluster.worker.id, task_id: msg.task_id, task_size: msg.task_size, task_error: r });
+                        }
                     })
             }
         })

@@ -67,5 +67,5 @@ sudo apt-get install -y nodejs
 sudo apt install npm
 npm i
 
-rm log_client_[0-9]_*.txt; node clustering_request.js
+rm log_client_[0-9]_*.txt; node clustering_request.js 120 20; python3 read_data.py
 ```

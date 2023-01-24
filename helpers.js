@@ -225,5 +225,5 @@ module.exports = {
     req_start_collecting_stat, req_stop_collecting_stat,
     create_new_collection, delete_all_collections, 
     create_attr_for_collection,
-    create_document_and_record_rtt
+    create_document_and_record_rtt,
 }
