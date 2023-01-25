@@ -14,6 +14,10 @@ const {
     create_document_and_record_rtt
 } = require('./helpers');
 
+const session_id = process.argv[2]// "test_session"
+const MAX_REQ_PER_TASK = parseInt(process.argv[3])  // how many request to send per task per client
+const MAX_REQ = parseInt(process.argv[4])              // how many request in total to give to clients
+
 const client = new Client();
 client.setSelfSigned();
 
@@ -68,11 +72,12 @@ async function clear_appwrite() {
  * @param {int} worker_id 
  * @param {int} number_of_request 
  */
-async function request_worker(COLLECTION_ID, session_id, worker_id, number_of_request) {
+async function request_worker(COLLECTION_ID, session_id, worker_id, number_of_request, start_id) {
 
     // Sometime param can be null
-    if (!COLLECTION_ID || !session_id || !worker_id || !number_of_request) {
-        return "request_worker error: some param null!"
+    if (!COLLECTION_ID || !session_id) {
+        await sleep_ms(10)
+        return `request_worker error: some param null!: COLLECTION_ID=${COLLECTION_ID}, session_id=${session_id}, start_id=${start_id}`
     }
 
     let result_all_requests = []
@@ -80,13 +85,14 @@ async function request_worker(COLLECTION_ID, session_id, worker_id, number_of_re
     for (let i = 0; i < number_of_request; i++) {
         data = {}
         for (let j = max_attr - 1; j >= 0; j--) {
-            data["key_" + j] = "iteration_chunk_th=" + i + "_shard_th=" + 0
+            data["key_" + j] = "iteration_chunk_th=" + (i + start_id) + "_shard_th=" + 0
         }
         create_document_and_record_rtt(
-            databases, process.env.APPWRITE_DATABASE, COLLECTION_ID, data, i, 0
+            databases, process.env.APPWRITE_DATABASE, COLLECTION_ID, data, i + start_id, 0
         )
             .then(result => { result_all_requests.push(result) })
             .catch(e => { console.log(e); return e })
+        await sleep_ms(10)
     }
     
     let has_exported_data = false
@@ -107,54 +113,64 @@ async function request_worker(COLLECTION_ID, session_id, worker_id, number_of_re
     return ""
 }
 
-const session_id = "test_session"
 
 async function handle_master() {
     let COLLECTION_ID = await clear_appwrite()
 
     console.log(`++ Number of CPUs is ${totalCPUs}`);
     console.log(`++ Master ${process.pid} is running`);
-    let current_task = 0
-    let task_th_done = 0
-    const MAX_NBR_TASK = parseInt(process.argv[2])
-    const task_size = parseInt(process.argv[3])
-    
+    let current_id = 0
+    let current_req_th = 0
+    let nbr_task_done = 0
+
     // Fork workers.
     let workers = []
     for (var i = 0; i < totalCPUs; i++) {
         let worker = cluster.fork();
         worker.on('message', function (msg) {
-            if ("task_id" in msg) {
-                let new_task_id = current_task;
+            if ("start_id" in msg) {
                 if (!("task_error" in msg)) {
-                    console.log(msg.task_id, task_th_done++)
-                    new_task_id = current_task++;
-                }
-                if (new_task_id < MAX_NBR_TASK) {
-                    console.log(`++ Master => ${msg.worker_id}: ok, new task_id=${new_task_id}`)
+                    // Task successed. Assign new task
+                    nbr_task_done += 1
+                    // console.log(msg)
+                    // console.log(current_req_th, nbr_task_done*MAX_REQ_PER_TASK, nbr_task_done)
+                    
+                    if (current_req_th + MAX_REQ_PER_TASK <= MAX_REQ) {
+                        current_req_th += MAX_REQ_PER_TASK
+                        console.log(`++ Master => ${msg.worker_id}: ok, new start_id=${current_req_th}`)
+                        worker.send({
+                            "COLLECTION_ID": COLLECTION_ID, "number_of_request": MAX_REQ_PER_TASK, 
+                            "start_id": current_req_th, "worker_id": msg.worker_id
+                        })
+                    }
+                } else {
+                    // error occured. re-assign task
+                    console.log(`++ Master => ${msg.worker_id}: Repeat start_id=${msg.start_id}`)
                     worker.send({
-                        "COLLECTION_ID": COLLECTION_ID, "task_id": new_task_id, 
-                        "task_size": task_size, "worker_id": msg.worker_id
+                        "COLLECTION_ID": COLLECTION_ID, "number_of_request": MAX_REQ_PER_TASK, 
+                        "start_id": msg.start_id, "worker_id": msg.worker_id
                     })
                 }
             }
-        });
+        })
         workers.push(worker)
     }
     console.log(`++ Initiated ${totalCPUs} workers. Start assigning tasks ...`)
     
     for (let i=0; i<totalCPUs; i++) {
-        // fs.createWriteStream(`log_client_${worker_id}_${session_id}.txt`); // clear old log files
-        workers[i].send({"task_id": current_task++, "task_size": task_size})
+        // Don't set MAX_REQ << MAX_REQ_PER_TASK*10, because the worker.on('message') might have been executed!
+        // and thus already bumps current_req_th simultaneously 
+        workers[i].send({"start_id": current_req_th, "number_of_request": MAX_REQ_PER_TASK})
+        current_req_th += MAX_REQ_PER_TASK
         await sleep_ms(100)
     }
     
     while (true) {
         // console.log(task_th_done)
-        if (task_th_done == MAX_NBR_TASK) {
+        if (nbr_task_done == MAX_REQ/MAX_REQ_PER_TASK) {
             req_stop_collecting_stat(session_id)
-            .then(r => {console.log("## Sent req_stop_collecting_stat"); process.exit()})
-            .catch(e => { console.log({ error: e }) })
+                .then(r => {console.log("## Sent req_stop_collecting_stat"); process.exit()})
+                .catch(e => { console.log({ error: e }) })
 
             break
         }
@@ -171,16 +187,25 @@ async function main() {
             // console.log(process.pid)
             if ("exit_now" in msg) {
                 // Exit  
-            } else if ("task_size" in msg) {
+            } else if ("start_id" in msg) {
                 // console.log(cluster.worker.id)
-                request_worker(msg.COLLECTION_ID, session_id, cluster.worker.id, msg.task_size)
+                request_worker(msg.COLLECTION_ID, session_id, cluster.worker.id, msg.number_of_request, msg.start_id)
                     .then(r => {
                         if (!r) {
-                            console.log(`-- Worker ${cluster.worker.id} done task_id=${msg.task_id}, task_size=${msg.task_size}`)
-                            process.send({ worker_id: cluster.worker.id, task_id: msg.task_id, task_size: msg.task_size });
+                            console.log(`-- Worker ${cluster.worker.id} done: ` + 
+                                `number_of_request=${msg.number_of_request}, start_id=${msg.start_id}`)
+                            process.send({ 
+                                worker_id: cluster.worker.id, 
+                                number_of_request: msg.number_of_request, start_id: msg.start_id 
+                            });
                         } else {
-                            console.log(`-- Worker ${cluster.worker.id} ERROR task_id=${msg.task_id}, task_size=${msg.task_size}: ${r}`)
-                            process.send({ worker_id: cluster.worker.id, task_id: msg.task_id, task_size: msg.task_size, task_error: r });
+                            console.log(`-- Worker ${cluster.worker.id} ERROR: ` + 
+                                `number_of_request=${msg.number_of_request}, start_id=${msg.start_id}: ${r}`)
+                            process.send({ 
+                                worker_id: cluster.worker.id, 
+                                number_of_request: msg.number_of_request, start_id: msg.start_id, 
+                                task_error: r 
+                            });
                         }
                     })
             }

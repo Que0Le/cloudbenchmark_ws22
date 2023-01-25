@@ -104,9 +104,10 @@ function req_stop_collecting_stat(session_name) {
                 // process.stdout.write(d);
                 if (res.statusCode != 202) {
                     reject(body)
+                } else {
+                    // console.log(JSON.parse(body))
+                    resolve(JSON.parse(body))
                 }
-                // console.log(JSON.parse(body))
-                resolve(JSON.parse(body))
             });
 
         }).on('error', (e) => {
@@ -159,7 +160,7 @@ function create_new_collection(db_obj, database_id) {
  * @param {int} shard_th 
  * @returns {Promise<string>}
  */
-function create_document_and_record_rtt(db_obj, database_id, collection_id, data, chunk_th, shard_th) {
+function create_document_and_record_rtt(db_obj, database_id, collection_id, data, req_id) {
     let t0 = new Date().getTime() //performance.now()
     let promise = db_obj.createDocument(
         database_id, collection_id, ID.unique(), data
@@ -169,11 +170,11 @@ function create_document_and_record_rtt(db_obj, database_id, collection_id, data
             let t3 = new Date().getTime() //performance.now()
             // return response["$id"];
             // console.log({"chunk_th": chunk_th, "shard_th": shard_th, "t0": t0, "t3": t3})
-            return {"chunk_th": chunk_th, "shard_th": shard_th, "t0": t0, "t3": t3}
+            return {"req_id": req_id, "t0": t0, "t3": t3}
         },
         function (error) {
-            console.log({chunk_th: chunk_th, shard_th: shard_th, error: error})
-            return {"chunk_th": chunk_th, "shard_th": shard_th, "t0": t0, "t3": -999, "error": error}
+            console.log({req_id: req_id, error: error})
+            return {"req_id": req_id, "t0": t0, "t3": -999, "error": error}
         });
 }
 
