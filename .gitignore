@@ -8,3 +8,4 @@ log_client_*.txt
 log_sut_*.txt
 log_sut_*.json
 test_*
+fig_dev_*

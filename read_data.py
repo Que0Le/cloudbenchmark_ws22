@@ -1,17 +1,25 @@
 import json, os, re, string, math, sys
 import numpy as np
 import matplotlib.pyplot as plt
+from dotenv import load_dotenv
+import urllib.request
+from cycler import cycler
+from matplotlib.colors import hsv_to_rgb
 
-session_id = sys.argv[1]#"test_session"
-log_sut_path = "log_sut_" + session_id + ".txt"
+load_dotenv()
+SERVER_ADDR = os.getenv('SERVER_ADDR')
+SERVER_PORT = os.getenv('SERVER_PORT')
 
-log_client_paths = [f for f in os.listdir() if re.search(r'log_client_\d{1,2}_' + session_id + '.txt', f)]
-log_sut_path = f"log_sut_{session_id}.txt"
+SESSION_ID = sys.argv[1]#"test_session"
+log_sut_path = "log_sut_" + SESSION_ID + ".txt"
+
+log_client_paths = [f for f in os.listdir() if re.search(r'log_client_\d{1,2}_' + SESSION_ID + '.txt', f)]
+log_sut_path = f"log_sut_{SESSION_ID}.txt"
 
 client_t3_t0 = []
 client_data = []
 count_error = 0
-count_sum = 0
+cb_total_req = 0
 ts_first_req_t0 = sys.maxsize
 ts_last_req_t0 = -1
 sut_data = []
@@ -31,9 +39,9 @@ for log_client_path in log_client_paths:
                 client_t3_t0.append(res["t3"] - res["t0"])
             else:
                 count_error = count_error + 1
-            count_sum = count_sum + 1
+            cb_total_req = cb_total_req + 1
 
-sorted_client_data = sorted(client_data, key=lambda k : k["t0"]) 
+sorted_after_t0_client_data = sorted(client_data, key=lambda k : k["t0"]) 
 
 print("--------------------------------- Client ---------------------------------")
 # print(np.percentile(client_t3_t0, 95))
@@ -41,11 +49,15 @@ print("--------------------------------- Client --------------------------------
 # print(np.percentile(client_t3_t0, 20))
 # print(np.std(client_t3_t0, ddof=1))
 print(f"95%={np.percentile(client_t3_t0, 95)} 50%={np.percentile(client_t3_t0, 50)} 20%={np.percentile(client_t3_t0, 20)} std={np.std(client_t3_t0, ddof=1)}")
-print(f"## Total: {count_sum}, errors: {count_error} ({(count_error*100/count_sum):.2f}%)")
+print(f"## Total: {cb_total_req}, errors: {count_error} ({(count_error*100/cb_total_req):.2f}%)")
 print(f"## Test duration: {((ts_last_req_t0 - ts_first_req_t0)/1000):.2f} sec")
-print(f"## Avg: {(count_sum/((ts_last_req_t0 - ts_first_req_t0)/1000)):.2f} req/sec")
+print(f"## Avg: {(cb_total_req/((ts_last_req_t0 - ts_first_req_t0)/1000)):.2f} req/sec")
 
 print("---------------------------------  SUT  ---------------------------------")
+# Download log from SUT server
+urllib.request.urlretrieve(
+    f"http://{SERVER_ADDR}:{SERVER_PORT}/download-stat/{SESSION_ID}", f"log_sut_{SESSION_ID}.txt")
+
 with open(log_sut_path) as log_sut_f:
     for line in log_sut_f:
         sut_data.append(json.loads(line))
@@ -54,49 +66,41 @@ with open(log_sut_path) as log_sut_f:
 
 sut_test_dur_ms = (sut_data[-1]["timestamp"] - sut_data[0]["timestamp"])
 
-cb_test_start_ts = min(sut_data[0]["timestamp"], sorted_client_data[0]["t0"])
-cb_test_stop_ts = max(sut_data[-1]["timestamp"], sorted_client_data[-1]["t3"])
-cb_test_dur_ms = cb_test_stop_ts - cb_test_start_ts
+cb_test_start_ts = min(sut_data[0]["timestamp"], sorted_after_t0_client_data[0]["t0"])
+cb_test_end_ts = max(sut_data[-1]["timestamp"], sorted_after_t0_client_data[-1]["t3"])
+cb_test_dur_ms = cb_test_end_ts - cb_test_start_ts
 
-# sorted_client_data = sorted(client_data, key=lambda k : k["value"]["t0"]) 
-
-# with open(f"log_client_{session_id}_sorted.txt" , 'w') as fout:
-#     for d in sorted_client_data:
-#         print(json.dumps(d), file=fout)
-
+print("---------------------------------  CB  ---------------------------------")
+print(f'cb_test_dur_ms:     {cb_test_dur_ms }  start: {cb_test_start_ts                    } end: {cb_test_end_ts}')
+print(f'sut_test_dur_ms:    {sut_test_dur_ms}  start: {sut_data[0]["timestamp"]            } end: {sut_data[-1]["timestamp"]}')
+print(f'client_test_dur_ms: {sut_test_dur_ms}  start: {sorted_after_t0_client_data[0]["t0"]} end: {sorted_after_t0_client_data[-1]["t3"]}')
 
 
-# def generate_data(N = 20):
-#     data = [random.randrange(3) for x in range(N)]
-#     A = [i for i, x in enumerate(data) if x == 0]
-#     B = [i for i, x in enumerate(data) if x == 1]
-#     C = [i for i, x in enumerate(data) if x == 2]
-#     return A,B,C
-
-# def to_xy(*events):
-#     x, y = [], []
-#     for i,event in enumerate(events):
-#         y.extend([i]*len(event))
-#         x.extend(event)
-#     x, y = np.array(x), np.array(y)
-#     return x,y
-
-# def event_string(x,y):
-#     labels = np.array(list(string.ascii_uppercase))        
-#     seq = labels[y[np.argsort(x)]]
-#     return seq.tostring()
-
-# def plot_events(x,y):
-#     labels = np.array(list(string.ascii_uppercase))    
-#     plt.hlines(y, x, x+1, lw = 2, color = 'red')
-#     plt.ylim(max(y)+0.5, min(y)-0.5)
-#     plt.yticks(range(y.max()+1), labels)
-#     # plt.show()
-#     plt.savefig(session_id)
-
-# A,B,C = generate_data(20)
-# x,y = to_xy(A,B,C)
-# print(event_string(x,y))
-# plot_events(x,y)
+# xmin, xmaxfloat or array-like. Respective beginning and end of each line.
+sorted_after_req_id_client_data = sorted(client_data, key=lambda k : k["req_id"])
+req_xmin = []       
+req_xmax = []
+for req in sorted_after_req_id_client_data:
+    req_xmin.append(req["t0"] - cb_test_start_ts)
+    req_xmax.append(req["t3"] - cb_test_start_ts)
 
 
+
+### Plot start and end of requests
+y: list = range(0, cb_total_req)
+# 1000 distinct colors:
+colors = [hsv_to_rgb([(i * 0.618033988749895) % 1.0, 1, 1])
+          for i in range(100)]
+plt.hlines(y, req_xmin, req_xmax, lw = 2, color = colors)
+plt.ylim(max(y) * 1.1, - max(y) * 0.1)
+# plt.yticks([])      # Disable tick for now. Later: select 10 labels?
+
+plt.gca().invert_yaxis()
+plt.title('Start and end timestamp of requests sorted by request ID')
+plt.xlabel('Timestamp (in milisecond) since test begin')
+plt.ylabel('Request-th sent to server')
+plt.savefig("fig_dev_" + SESSION_ID + ".png", dpi=800)
+
+
+### Calculate requests/sec by interval
+# How many requests/100ms or 200ms or 1s 

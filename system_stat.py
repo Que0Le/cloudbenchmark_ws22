@@ -1,9 +1,10 @@
 
 from uvicorn.main import Server
-import psutil, time, json
+import psutil, time, json, os
 from typing import Union
 
 from fastapi import BackgroundTasks, Depends, FastAPI, status, Response
+from fastapi.responses import FileResponse
 
 app = FastAPI()
 
@@ -99,3 +100,9 @@ async def stop_collecting(response: Response, session_name: str = ""):
     
     response.status_code = status.HTTP_400_BAD_REQUEST
     return {"message": "Client requested stop-collecting but no task in progress", "session_name" : global_session_name, "len_stat": len_stat}
+
+
+@app.get("/download-stat/{session_id}")
+async def get_stat_by_session_id(session_id: str):
+    if os.path.isfile("./" + "log_sut_" + session_id + ".txt"):
+        return FileResponse("./" + "log_sut_" + session_id + ".txt")

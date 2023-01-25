@@ -50,7 +50,7 @@ python3 -m venv env
 source env/bin/activate
 
 # python3 -m pip install pip install -r requirements.txt
-
+# pip3 freeze > requirements.txt
 python3 -m pip install uvicorn fastapi psutil matplotlib numpy
 # Ctrl+Shift+P to select Python interpreter
 
@@ -67,7 +67,7 @@ sudo apt-get install -y nodejs
 sudo apt install npm
 npm i
 
-MAX_REQ_PER_TASK=5; MAX_REQ=500; CB_SESSION_ID=session1; rm log_client_[0-9]_*.txt; node clustering_request.js $CB_SESSION_ID $MAX_REQ_PER_TASK $MAX_REQ; python3 read_data.py $CB_SESSION_ID
+MAX_REQ_PER_TASK=10; MAX_REQ=500; CB_SESSION_ID=session1; rm log_client_[0-9]_*.txt; node clustering_request.js $CB_SESSION_ID $MAX_REQ_PER_TASK $MAX_REQ; python3 read_data.py $CB_SESSION_ID
 
 CB_SESSION_ID=session1; python3 read_data.py $CB_SESSION_ID
 ```
