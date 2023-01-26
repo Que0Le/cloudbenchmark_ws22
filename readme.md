@@ -67,7 +67,9 @@ sudo apt-get install -y nodejs
 sudo apt install npm
 npm i
 
-MAX_REQ_PER_TASK=10; MAX_REQ=500; CB_SESSION_ID=session1; rm log_client_[0-9]_*.txt; node clustering_request.js $CB_SESSION_ID $MAX_REQ_PER_TASK $MAX_REQ; python3 read_data.py $CB_SESSION_ID
+# MAX_REQ_PER_TASK=10; MAX_REQ=500; CB_SESSION_ID=session1; rm log_client_*[0-9]_*.txt; node clustering_request.js $CB_SESSION_ID $MAX_REQ_PER_TASK $MAX_REQ; python3 read_data.py $CB_SESSION_ID
+MAX_REQ_PER_TASK=2; MAX_REQ=2000; NBR_WORKERS=10; RUN_MODE=silent; CB_SESSION_ID=session1; rm log_client_*[0-9]_*.txt; NODE_NO_WARNINGS=1 node clustering_request.js $CB_SESSION_ID $MAX_REQ_PER_TASK $MAX_REQ $NBR_WORKERS $RUN_MODE; python3 read_data.py $CB_SESSION_ID
+
 
 CB_SESSION_ID=session1; python3 read_data.py $CB_SESSION_ID
 ```

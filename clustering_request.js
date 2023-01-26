@@ -14,9 +14,11 @@ const {
     create_document_and_record_rtt
 } = require('./helpers');
 
-const session_id = process.argv[2]// "test_session"
+const SESSION_ID = process.argv[2]// "test_session"
 const MAX_REQ_PER_TASK = parseInt(process.argv[3])  // how many request to send per task per client
 const MAX_REQ = parseInt(process.argv[4])              // how many request in total to give to clients
+const NBR_WORKERS = process.argv[5]
+const RUN_MODE = process.argv[6]
 
 const client = new Client();
 client.setSelfSigned();
@@ -57,7 +59,7 @@ async function clear_appwrite() {
     await sleep_ms(2000)
 
     // Inform test server to start collecting system status
-    let res_start = await req_start_collecting_stat(session_id).catch(e => { console.log({error: e}); return })
+    let res_start = await req_start_collecting_stat(SESSION_ID).catch(e => { console.log({error: e}); return })
     console.log("## Sent req_start_collecting_stat")
     console.log(res_start)
     await sleep_ms(100)
@@ -125,7 +127,7 @@ async function handle_master() {
 
     // Fork workers.
     let workers = []
-    for (var i = 0; i < totalCPUs; i++) {
+    for (var i = 0; i < NBR_WORKERS; i++) {
         let worker = cluster.fork();
         worker.on('message', function (msg) {
             if ("start_id" in msg) {
@@ -137,7 +139,9 @@ async function handle_master() {
                     
                     if (current_req_th + MAX_REQ_PER_TASK <= MAX_REQ) {
                         current_req_th += MAX_REQ_PER_TASK
-                        console.log(`++ Master => ${msg.worker_id}: ok, new start_id=${current_req_th}`)
+                        if (RUN_MODE == "debug") {
+                            console.log(`++ Master => ${msg.worker_id}: ok, new start_id=${current_req_th}`)
+                        }
                         worker.send({
                             "COLLECTION_ID": COLLECTION_ID, "number_of_request": MAX_REQ_PER_TASK, 
                             "start_id": current_req_th, "worker_id": msg.worker_id
@@ -145,7 +149,9 @@ async function handle_master() {
                     }
                 } else {
                     // error occured. re-assign task
-                    console.log(`++ Master => ${msg.worker_id}: Repeat start_id=${msg.start_id}`)
+                    if (RUN_MODE == "debug") {
+                        console.log(`++ Master => ${msg.worker_id}: Repeat start_id=${msg.start_id}`)
+                    }
                     worker.send({
                         "COLLECTION_ID": COLLECTION_ID, "number_of_request": MAX_REQ_PER_TASK, 
                         "start_id": msg.start_id, "worker_id": msg.worker_id
@@ -155,9 +161,9 @@ async function handle_master() {
         })
         workers.push(worker)
     }
-    console.log(`++ Initiated ${totalCPUs} workers. Start assigning tasks ...`)
+    console.log(`++ Initiated ${NBR_WORKERS} workers. Start assigning tasks ...`)
     
-    for (let i=0; i<totalCPUs; i++) {
+    for (let i=0; i<NBR_WORKERS; i++) {
         // Don't set MAX_REQ << MAX_REQ_PER_TASK*10, because the worker.on('message') might have been executed!
         // and thus already bumps current_req_th simultaneously 
         workers[i].send({"start_id": current_req_th, "number_of_request": MAX_REQ_PER_TASK})
@@ -168,7 +174,7 @@ async function handle_master() {
     while (true) {
         // console.log(task_th_done)
         if (nbr_task_done == MAX_REQ/MAX_REQ_PER_TASK) {
-            req_stop_collecting_stat(session_id)
+            req_stop_collecting_stat(SESSION_ID)
                 .then(r => {console.log("## Sent req_stop_collecting_stat"); process.exit()})
                 .catch(e => { console.log({ error: e }) })
 
@@ -182,25 +188,31 @@ async function main() {
     if (cluster.isMaster) {
         await handle_master()
     } else {
-        console.log(`-- Worker ${cluster.worker.id} started.`)
+        if (RUN_MODE == "debug") {
+            console.log(`-- Worker ${cluster.worker.id} started.`)
+        }
         process.on("message", (msg) => {
             // console.log(process.pid)
             if ("exit_now" in msg) {
                 // Exit  
             } else if ("start_id" in msg) {
                 // console.log(cluster.worker.id)
-                request_worker(msg.COLLECTION_ID, session_id, cluster.worker.id, msg.number_of_request, msg.start_id)
+                request_worker(msg.COLLECTION_ID, SESSION_ID, cluster.worker.id, msg.number_of_request, msg.start_id)
                     .then(r => {
                         if (!r) {
-                            console.log(`-- Worker ${cluster.worker.id} done: ` + 
-                                `number_of_request=${msg.number_of_request}, start_id=${msg.start_id}`)
+                            if (RUN_MODE == "debug") {
+                                console.log(`-- Worker ${cluster.worker.id} done: ` + 
+                                    `number_of_request=${msg.number_of_request}, start_id=${msg.start_id}`)
+                            }
                             process.send({ 
                                 worker_id: cluster.worker.id, 
                                 number_of_request: msg.number_of_request, start_id: msg.start_id 
                             });
                         } else {
-                            console.log(`-- Worker ${cluster.worker.id} ERROR: ` + 
-                                `number_of_request=${msg.number_of_request}, start_id=${msg.start_id}: ${r}`)
+                            if (RUN_MODE == "debug") {
+                                console.log(`-- Worker ${cluster.worker.id} ERROR: ` + 
+                                    `number_of_request=${msg.number_of_request}, start_id=${msg.start_id}: ${r}`)
+                            }
                             process.send({ 
                                 worker_id: cluster.worker.id, 
                                 number_of_request: msg.number_of_request, start_id: msg.start_id, 

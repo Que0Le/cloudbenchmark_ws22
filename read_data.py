@@ -85,20 +85,43 @@ for req in sorted_after_req_id_client_data:
     req_xmax.append(req["t3"] - cb_test_start_ts)
 
 
+sut_avg_cpu = []
+sut_timestamp = []
+for sut_stat_line in sut_data:
+    sut_avg_cpu.append(sum(sut_stat_line["cpu_per"]) / len(sut_stat_line["cpu_per"]))
+    sut_timestamp.append(sut_stat_line["timestamp"] - cb_test_start_ts)
+
+
 
 ### Plot start and end of requests
 y: list = range(0, cb_total_req)
 # 1000 distinct colors:
 colors = [hsv_to_rgb([(i * 0.618033988749895) % 1.0, 1, 1])
           for i in range(100)]
-plt.hlines(y, req_xmin, req_xmax, lw = 2, color = colors)
-plt.ylim(max(y) * 1.1, - max(y) * 0.1)
+# plt.hlines(y, req_xmin, req_xmax, lw = 2, color = colors)
+# plt.ylim(max(y) * 1.1, - max(y) * 0.1)
 # plt.yticks([])      # Disable tick for now. Later: select 10 labels?
 
-plt.gca().invert_yaxis()
+
+fig, ax1 = plt.subplots()
+ax2 = ax1.twinx()
+
+# Plot left side (req id)
+ax1.hlines(y, req_xmin, req_xmax, lw = 2, color = colors)
+ax1.set_xlabel('Timestamp (in milisecond) since test begin')
+ax1.set_ylabel('Rquest ID')
+ax1.set_ylim(max(y) * 1.1, - max(y) * 0.1)
+ax1.invert_yaxis()
+# Plot right side (cpu usage)
+ax2.plot(sut_timestamp, sut_avg_cpu, 'lightslategray')
+ax2.set_ylabel('CPU time average')
+ax2.set_ylim(110, -10)
+ax2.invert_yaxis()
+
+# plt.gca().invert_yaxis()
 plt.title('Start and end timestamp of requests sorted by request ID')
-plt.xlabel('Timestamp (in milisecond) since test begin')
-plt.ylabel('Request-th sent to server')
+# plt.xlabel('Timestamp (in milisecond) since test begin')
+# plt.ylabel('Request-th sent to server')
 plt.savefig("fig_dev_" + SESSION_ID + ".png", dpi=800)
 
 
