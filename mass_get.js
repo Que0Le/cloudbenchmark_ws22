@@ -1,72 +1,86 @@
-var cluster = require('cluster');
-var http = require('http');
-const totalCPUs = require("os").cpus().length;
-const { Client, Users, ID, Databases } = require('node-appwrite');
+const { Client, Users, ID, Databases, Query  } = require('node-appwrite');
 const fs = require('fs');
 
 require('dotenv').config();
+
+let SERVER_ADDR  = process.env.SERVER_ADDR
 
 const { 
     rand_str, sleep_ms, write_array_of_results_to_file,
     req_start_collecting_stat, req_stop_collecting_stat,
     create_new_collection, delete_all_collections, 
     create_attr_for_collection, 
-    create_document_and_record_rtt
+    create_document_and_record_rtt,
 } = require('./helpers');
 
-const SESSION_ID = process.argv[2]// "test_session"
-const MAX_REQ_PER_TASK = parseInt(process.argv[3])  // how many request to send per task per client
-const MAX_REQ = parseInt(process.argv[4])              // how many request in total to give to clients
-const NBR_WORKERS = process.argv[5]
-const RUN_MODE = process.argv[6]
+
+const SESSION_ID = process.argv[2]
+const COLLECTION_ID = process.argv[3]
 
 const client = new Client();
 client.setSelfSigned();
+client
+    .setEndpoint(process.env.APPWRITE_API_ENDPOINT)
+    .setProject(process.env.APPWRITE_PROJECT)
+    .setKey(process.env.APPWRITE_API_KEY)
 
 const databases = new Databases(client);
-// databases.createStringAttribute('[DATABASE_ID]', '[COLLECTION_ID]', '', 1, false);
-client
-    .setEndpoint(process.env.APPWRITE_API_ENDPOINT) // Your API Endpoint
-    .setProject(process.env.APPWRITE_PROJECT) // Your project ID
-    .setKey(process.env.APPWRITE_API_KEY)
-;
 
-cluster.schedulingPolicy = cluster.SCHED_NONE;
+// const file_paths = [
+//   "log_client_0_session1.txt",
+//   "log_client_1_session1.txt",
+// ];
 
-let max_attr = 10
-async function clear_appwrite() {
-    // await delete_all_collections(databases, process.env.APPWRITE_DATABASE).catch(e => {
-    //     console.log("Error delete_all_collections:")
-    //     console.log(e)
-    // })
-    let COLLECTION_ID = await create_new_collection(databases, process.env.APPWRITE_DATABASE).catch(e => {
-        console.log("Error create_new_collection:")
-        console.log(e)
-    })
-    console.log("## CREATED COLLECTION_ID=" + COLLECTION_ID);
+const { once } = require('node:events');
+const { createReadStream } = require('node:fs');
+const { createInterface } = require('node:readline');
+const { Console } = require('console');
 
-    attrs = []
-    for (let i=0; i<max_attr; i++) {
-        attrs.push({"attr_key": "key_" + i, "attr_size": 255, "attr_required": true})
+async function extract_doc_id_from_log_file(file_path) {
+    try {
+        let ids = []
+        const rl = createInterface({
+            input: createReadStream(file_path),
+            crlfDelay: Infinity,
+        });
+
+        rl.on('line', (line) => {
+            // Process the line.
+            ids.push(JSON.parse(line).doc_id)
+        });
+
+        await once(rl, 'close');
+
+        console.log(`File processed: ${file_path}`);
+        return ids
+    } catch (err) {
+        console.error(err);
+        return []
     }
-    let created_attrs = await create_attr_for_collection(databases, process.env.APPWRITE_DATABASE, COLLECTION_ID, attrs)
-        .catch(e => {
-            console.log("Error create_attr_for_collection:")
-            console.log(e)
-        })
-    console.log("## CREATED " + created_attrs.length + " attrs")
+};
 
-    await sleep_ms(2000)
+const extract_doc_id_from_log_files = async (array) => {
+    const allAsyncResults = []
 
-    // Inform test server to start collecting system status
-    let res_start = await req_start_collecting_stat(SESSION_ID).catch(e => { console.log({error: e}); return })
-    console.log("## Sent req_start_collecting_stat")
-    console.log(res_start)
-    await sleep_ms(100)
+    for (const item of array) {
+        const asyncResult = await extract_doc_id_from_log_file(item)
+        allAsyncResults.push(...asyncResult)
+    }
 
-    return COLLECTION_ID
+    return allAsyncResults
 }
 
+let session_id = "session1"
+let reg =  new RegExp('log_client_\\d+_' + session_id + '.txt', 'i');
+
+let client_log_path = fs.readdirSync('./2M_post', { withFileTypes: true })
+    .filter(item => !item.isDirectory())
+    .filter(item => reg.test(item.name))
+    .map(item => item.name)
+// console.log(client_log_path)
+
+
+extract_doc_id_from_log_files(client_log_path).then(r => console.log(r.length))
 
 /**
  * 
@@ -197,7 +211,7 @@ async function main() {
                 // Exit  
             } else if ("start_id" in msg) {
                 // console.log(cluster.worker.id)
-                request_worker(msg.COLLECTION_ID, SESSION_ID, cluster.worker.id, msg.number_of_request, msg.start_id)
+                request_worker(COLLECTION_ID, SESSION_ID, cluster.worker.id, msg.number_of_request, msg.start_id)
                     .then(r => {
                         if (!r) {
                             if (RUN_MODE == "debug") {
@@ -226,4 +240,4 @@ async function main() {
 }
 
 
-main()
+// main()

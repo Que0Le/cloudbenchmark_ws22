@@ -170,7 +170,7 @@ function create_document_and_record_rtt(db_obj, database_id, collection_id, data
             let t3 = new Date().getTime() //performance.now()
             // return response["$id"];
             // console.log({"chunk_th": chunk_th, "shard_th": shard_th, "t0": t0, "t3": t3})
-            return {"req_id": req_id, "t0": t0, "t3": t3}
+            return {"req_id": req_id, doc_id: response["$id"], "t0": t0, "t3": t3}
         },
         function (error) {
             console.log({req_id: req_id, error: error})

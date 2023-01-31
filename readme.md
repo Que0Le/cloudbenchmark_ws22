@@ -16,15 +16,13 @@ su - ${USER}
 
 git clone git@github.com:Que0Le/cloudbenchmark_ws22.git 
 cd cloudbenchmark_ws22
-mkdir appwrite
+mkdir appwrite && cd appwrite
 
 
 # Appwrite
-docker run -it --rm \
-    --volume /var/run/docker.sock:/var/run/docker.sock \
-    --volume "$(pwd)"/appwrite:/usr/src/code/appwrite:rw \
-    --entrypoint="install" \
-    appwrite/appwrite:1.1.1
+docker run -it --rm --volume /var/run/docker.sock:/var/run/docker.sock --volume "$(pwd)"/appwrite:/usr/src/code/appwrite:rw --entrypoint="install" -e _APP_OPTIONS_ABUSE=disabled appwrite/appwrite:1.1.1
+## stop
+docker container stop $(docker container ls -q --filter name=appwrite*)
 
 # Choose your server HTTP port: (default: 80)
 # 80
@@ -72,4 +70,6 @@ MAX_REQ_PER_TASK=2; MAX_REQ=2000; NBR_WORKERS=10; RUN_MODE=silent; CB_SESSION_ID
 
 
 CB_SESSION_ID=session1; python3 read_data.py $CB_SESSION_ID
+
+node -i -e "$(< ./mass_get.js)"
 ```
