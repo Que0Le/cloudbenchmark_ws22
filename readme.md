@@ -66,13 +66,14 @@ sudo apt install npm
 npm i
 
 # MAX_REQ_PER_TASK=10; MAX_REQ=500; CB_SESSION_ID=session1; rm log_client_*[0-9]_*.txt; node clustering_request.js $CB_SESSION_ID $MAX_REQ_PER_TASK $MAX_REQ; python3 read_data.py $CB_SESSION_ID
-MAX_REQ_PER_TASK=2; MAX_REQ=2000; NBR_WORKERS=10; RUN_MODE=silent; CB_SESSION_ID=session1; rm log_client_*[0-9]_*.txt; NODE_NO_WARNINGS=1 node clustering_request.js $CB_SESSION_ID $MAX_REQ_PER_TASK $MAX_REQ $NBR_WORKERS $RUN_MODE; python3 read_data.py $CB_SESSION_ID
+MAX_REQ_PER_TASK=2; MAX_REQ=2000; NBR_WORKERS=10; RUN_MODE=silent; CB_SESSION_ID=post.session1; DB_DATA_HALF_LENGTH=100; rm log_client_*[0-9]_*post*.txt; NODE_NO_WARNINGS=1 node clustering_request.js $CB_SESSION_ID $MAX_REQ_PER_TASK $MAX_REQ $NBR_WORKERS $RUN_MODE $DB_DATA_HALF_LENGTH; python3 read_data.py $CB_SESSION_ID
 
 
 CB_SESSION_ID=session1; python3 read_data.py $CB_SESSION_ID
 
 ## TODO
-rm log_client_*[0-9]_*get*.txt; node mass_get.js getSession1 10 20000 10 silent 63d929846ad2459e4ed7 session1
+# rm log_client_*[0-9]_*get*.txt; node mass_get.js getSession1 10 20000 10 silent 63d929846ad2459e4ed7 session1
 
+MAX_REQ_PER_TASK=10; MAX_REQ=2000; NBR_WORKERS=10; RUN_MODE=silent; COLLECTION_ID=63d929846ad2459e4ed7; SESSION_ID_POST=post.session1; CB_SESSION_ID=get.session1; rm log_client_*[0-9]_*get*.txt; NODE_NO_WARNINGS=1 node mass_get.js $CB_SESSION_ID $MAX_REQ_PER_TASK $MAX_REQ $NBR_WORKERS $RUN_MODE $COLLECTION_ID $SESSION_ID_POST; python3 read_data.py $CB_SESSION_ID
 node -i -e "$(< ./mass_get.js)"
 ```

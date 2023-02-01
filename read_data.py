@@ -48,7 +48,14 @@ print("--------------------------------- Client --------------------------------
 # print(np.percentile(client_t3_t0, 50))
 # print(np.percentile(client_t3_t0, 20))
 # print(np.std(client_t3_t0, ddof=1))
-print(f"95%={np.percentile(client_t3_t0, 95)} 50%={np.percentile(client_t3_t0, 50)} 20%={np.percentile(client_t3_t0, 20)} std={np.std(client_t3_t0, ddof=1)}")
+print(
+    f"99%={np.percentile(client_t3_t0, 99)} " +
+    f"95%={np.percentile(client_t3_t0, 95)} " +
+    f"50%={np.percentile(client_t3_t0, 50)} " +
+    f"20%={np.percentile(client_t3_t0, 20)} " +
+    f"min={np.amin(client_t3_t0)} " +
+    f"max={np.amax(client_t3_t0)} " +
+    f"std={np.std(client_t3_t0, ddof=1)}")
 print(f"## Total: {cb_total_req}, errors: {count_error} ({(count_error*100/cb_total_req):.2f}%)")
 print(f"## Test duration: {((ts_last_req_t0 - ts_first_req_t0)/1000):.2f} sec")
 print(f"## Avg: {(cb_total_req/((ts_last_req_t0 - ts_first_req_t0)/1000)):.2f} req/sec")

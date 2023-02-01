@@ -3,6 +3,7 @@ var http = require('http');
 const totalCPUs = require("os").cpus().length;
 const { Client, Users, ID, Databases } = require('node-appwrite');
 const fs = require('fs');
+var crypto = require("crypto");
 
 require('dotenv').config();
 
@@ -19,6 +20,7 @@ const MAX_REQ_PER_TASK = parseInt(process.argv[3])  // how many request to send 
 const MAX_REQ = parseInt(process.argv[4])              // how many request in total to give to clients
 const NBR_WORKERS = process.argv[5]
 const RUN_MODE = process.argv[6]
+const DB_DATA_HALF_LENGTH = parseInt(process.argv[7])
 
 const client = new Client();
 client.setSelfSigned();
@@ -30,6 +32,15 @@ client
     .setProject(process.env.APPWRITE_PROJECT) // Your project ID
     .setKey(process.env.APPWRITE_API_KEY)
 ;
+
+/**
+ * 
+ * @param {int} len 
+ * @returns random string length=len*2
+ */
+function generate_random_string_half_len(half_len) {
+    return crypto.randomBytes(half_len).toString('hex')
+}
 
 cluster.schedulingPolicy = cluster.SCHED_NONE;
 
@@ -87,7 +98,8 @@ async function request_worker(COLLECTION_ID, session_id, worker_id, number_of_re
     for (let i = 0; i < number_of_request; i++) {
         data = {}
         for (let j = max_attr - 1; j >= 0; j--) {
-            data["key_" + j] = "iteration_chunk_th=" + (i + start_id) + "_shard_th=" + 0
+            // data["key_" + j] = "iteration_chunk_th=" + (i + start_id) + "_shard_th=" + 0
+            data["key_" + j] = generate_random_string_half_len(DB_DATA_HALF_LENGTH)
         }
         create_document_and_record_rtt(
             databases, process.env.APPWRITE_DATABASE, COLLECTION_ID, data, i + start_id, 0

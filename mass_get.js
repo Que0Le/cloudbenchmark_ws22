@@ -1,5 +1,8 @@
-const { Client, Users, ID, Databases, Query  } = require('node-appwrite');
-const fs = require('fs');
+const { Client, Databases } = require('node-appwrite');
+const { readdir } = require('fs/promises');
+const { once } = require('node:events');
+const { createReadStream } = require('node:fs');
+const { createInterface } = require('node:readline');
 
 require('dotenv').config();
 
@@ -11,11 +14,10 @@ const RUN_MODE = process.argv[6]
 const COLLECTION_ID = process.argv[7]
 const SESSION_ID_POST = process.argv[8] // to read log from
 
-console.log(RUN_MODE)
-const { 
+const {
     rand_str, sleep_ms, write_array_of_results_to_file,
     req_start_collecting_stat, req_stop_collecting_stat,
-    create_new_collection, delete_all_collections, 
+    create_new_collection, delete_all_collections,
     create_attr_for_collection, get_document_and_record_rtt,
     create_document_and_record_rtt,
 } = require('./helpers');
@@ -32,12 +34,6 @@ client
     .setKey(process.env.APPWRITE_API_KEY)
 
 const databases = new Databases(client);
-
-const { readdir } = require('fs/promises');
-const { once } = require('node:events');
-const { createReadStream } = require('node:fs');
-const { createInterface } = require('node:readline');
-const { Console } = require('console');
 
 async function extract_doc_id_from_log_file(file_path) {
     try {
@@ -82,17 +78,17 @@ const extract_doc_id_from_log_files = async (array) => {
 }
 
 // let session_id = "session1"
-let reg =  new RegExp('log_client_\\d+_' + SESSION_ID_POST + '.txt', 'i');
+let reg = new RegExp('log_client_\\d+_' + SESSION_ID_POST + '.txt', 'i');
 
 
 
 function get_x_random_id_from_2d_array(x, array) {
     let ids = []
     if (array) {
-        while (ids.length<x) {
-            let a = Math.round(Math.random()*array.length)
-            if(array[a]) {
-                let b = Math.round(Math.random()*array[a].length)
+        while (ids.length < x) {
+            let a = Math.round(Math.random() * array.length)
+            if (array[a]) {
+                let b = Math.round(Math.random() * array[a].length)
                 let v2 = array[a][b]
                 ids.push(v2)
             }
@@ -121,10 +117,9 @@ async function request_worker(COLLECTION_ID, session_id, worker_id, doc_ids, sta
         await sleep_ms(10)
         return `request_worker error: some param null!: COLLECTION_ID=${COLLECTION_ID}, session_id=${session_id}, start_id=${start_id}`
     }
-    // await sleep_ms(100)
 
     let result_all_requests = []
-    for (let i=0; i<doc_ids.length; i++) {
+    for (let i = 0; i < doc_ids.length; i++) {
         get_document_and_record_rtt(
             databases, process.env.APPWRITE_DATABASE, COLLECTION_ID, doc_ids[i], i + start_id
         )
@@ -157,7 +152,7 @@ async function handle_master(all_doc_ids_2d) {
 
     console.log(`++ Number of CPUs is ${totalCPUs}`);
     console.log(`++ Master ${process.pid} is running`);
-    let res_start = await req_start_collecting_stat(SESSION_ID).catch(e => { console.log({error: e}); return })
+    let res_start = await req_start_collecting_stat(SESSION_ID).catch(e => { console.log({ error: e }); process.exit() })
     console.log("## Sent req_start_collecting_stat")
     let current_id = 0
     let current_req_th = 0
@@ -171,14 +166,14 @@ async function handle_master(all_doc_ids_2d) {
             if ("start_id" in msg) {
                 if (!("task_error" in msg)) {
                     // Task successed. Assign new task
-                    nbr_task_done += 1            
-                    if (current_req_th + MAX_REQ_PER_TASK <= (MAX_REQ-1)) {
+                    nbr_task_done += 1
+                    if (current_req_th + MAX_REQ_PER_TASK <= (MAX_REQ - 1)) {
                         current_req_th += MAX_REQ_PER_TASK
                         if (RUN_MODE == "debug") {
                             console.log(`++ Master => ${msg.worker_id}: ok, new start_id=${current_req_th}`)
                         }
                         worker.send({
-                            "COLLECTION_ID": COLLECTION_ID, 
+                            "COLLECTION_ID": COLLECTION_ID,
                             doc_ids: get_x_random_id_from_2d_array(MAX_REQ_PER_TASK, all_doc_ids_2d),
                             "start_id": current_req_th, "worker_id": msg.worker_id,
                         })
@@ -190,7 +185,7 @@ async function handle_master(all_doc_ids_2d) {
                         console.log(`++ Master => ${msg.worker_id}: Repeat start_id=${msg.start_id}`)
                     }
                     worker.send({
-                        "COLLECTION_ID": COLLECTION_ID, 
+                        "COLLECTION_ID": COLLECTION_ID,
                         doc_ids: get_x_random_id_from_2d_array(MAX_REQ_PER_TASK, all_doc_ids_2d),
                         "start_id": msg.start_id, "worker_id": msg.worker_id
                     })
@@ -200,24 +195,24 @@ async function handle_master(all_doc_ids_2d) {
         workers.push(worker)
     }
     console.log(`++ Initiated ${NBR_WORKERS} workers. Start assigning tasks ...`)
-    
-    for (let i=0; i<NBR_WORKERS; i++) {
+
+    for (let i = 0; i < NBR_WORKERS; i++) {
         workers[i].send({
-            "start_id": current_req_th, 
+            "start_id": current_req_th,
             doc_ids: get_x_random_id_from_2d_array(MAX_REQ_PER_TASK, all_doc_ids_2d)
         })
-        if (i != (NBR_WORKERS-1)) {
+        if (i != (NBR_WORKERS - 1)) {
             current_req_th += MAX_REQ_PER_TASK
         }
         // console.log(`-----------------------assigned worker i=${i} current_req_th=${current_req_th}`)
         // await sleep_ms(100)
     }
-    
+
     while (true) {
         // console.log(nbr_task_done, MAX_REQ/MAX_REQ_PER_TASK)
-        if (nbr_task_done == MAX_REQ/MAX_REQ_PER_TASK) {
+        if (nbr_task_done == MAX_REQ / MAX_REQ_PER_TASK) {
             req_stop_collecting_stat(SESSION_ID)
-                .then(r => {console.log("## Sent req_stop_collecting_stat"); process.exit()})
+                .then(r => { console.log("## Sent req_stop_collecting_stat"); process.exit() })
                 .catch(e => { console.log({ error: e }) })
             // console.log("Done. Exiting ...")
             // process.exit()
@@ -254,22 +249,22 @@ async function main() {
                     .then(r => {
                         if (!r) {
                             if (RUN_MODE == "debug") {
-                                console.log(`-- Worker ${cluster.worker.id} done: ` + 
+                                console.log(`-- Worker ${cluster.worker.id} done: ` +
                                     `number_of_request=${msg.doc_ids.length}, start_id=${msg.start_id}`)
                             }
-                            process.send({ 
-                                worker_id: cluster.worker.id, 
-                                doc_ids: msg.doc_ids, start_id: msg.start_id 
+                            process.send({
+                                worker_id: cluster.worker.id,
+                                doc_ids: msg.doc_ids, start_id: msg.start_id
                             });
                         } else {
                             if (RUN_MODE == "debug") {
-                                console.log(`-- Worker ${cluster.worker.id} ERROR: ` + 
+                                console.log(`-- Worker ${cluster.worker.id} ERROR: ` +
                                     `number_of_request=${msg.doc_ids.length}, start_id=${msg.start_id}: ${r}`)
                             }
-                            process.send({ 
-                                worker_id: cluster.worker.id, 
-                                doc_ids: msg.doc_ids, start_id: msg.start_id, 
-                                task_error: r 
+                            process.send({
+                                worker_id: cluster.worker.id,
+                                doc_ids: msg.doc_ids, start_id: msg.start_id,
+                                task_error: r
                             });
                         }
                     })
