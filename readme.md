@@ -71,5 +71,8 @@ MAX_REQ_PER_TASK=2; MAX_REQ=2000; NBR_WORKERS=10; RUN_MODE=silent; CB_SESSION_ID
 
 CB_SESSION_ID=session1; python3 read_data.py $CB_SESSION_ID
 
+## TODO
+rm log_client_*[0-9]_*get*.txt; node mass_get.js getSession1 10 20000 10 silent 63d929846ad2459e4ed7 session1
+
 node -i -e "$(< ./mass_get.js)"
 ```
