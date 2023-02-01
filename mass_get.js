@@ -3,19 +3,24 @@ const fs = require('fs');
 
 require('dotenv').config();
 
-let SERVER_ADDR  = process.env.SERVER_ADDR
+const SESSION_ID = process.argv[2]// "test_session"
+const MAX_REQ_PER_TASK = parseInt(process.argv[3])  // how many request to send per task per client
+const MAX_REQ = parseInt(process.argv[4])              // how many request in total to give to clients
+const NBR_WORKERS = process.argv[5]
+const RUN_MODE = process.argv[6]
+const COLLECTION_ID = process.argv[7]
 
 const { 
     rand_str, sleep_ms, write_array_of_results_to_file,
     req_start_collecting_stat, req_stop_collecting_stat,
     create_new_collection, delete_all_collections, 
-    create_attr_for_collection, 
+    create_attr_for_collection, get_document_and_record_rtt,
     create_document_and_record_rtt,
 } = require('./helpers');
 
-
-const SESSION_ID = process.argv[2]
-const COLLECTION_ID = process.argv[3]
+var cluster = require('cluster');
+cluster.schedulingPolicy = cluster.SCHED_NONE;
+const totalCPUs = require("os").cpus().length;
 
 const client = new Client();
 client.setSelfSigned();
@@ -31,6 +36,8 @@ const databases = new Databases(client);
 //   "log_client_1_session1.txt",
 // ];
 
+// import { readdir } from 'fs/promises'
+const { readdir } = require('fs/promises');
 const { once } = require('node:events');
 const { createReadStream } = require('node:fs');
 const { createInterface } = require('node:readline');
@@ -59,12 +66,20 @@ async function extract_doc_id_from_log_file(file_path) {
     }
 };
 
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
 const extract_doc_id_from_log_files = async (array) => {
     const allAsyncResults = []
 
     for (const item of array) {
         const asyncResult = await extract_doc_id_from_log_file(item)
-        allAsyncResults.push(...asyncResult)
+        shuffleArray(asyncResult)
+        allAsyncResults.push(asyncResult)
     }
 
     return allAsyncResults
@@ -73,14 +88,52 @@ const extract_doc_id_from_log_files = async (array) => {
 let session_id = "session1"
 let reg =  new RegExp('log_client_\\d+_' + session_id + '.txt', 'i');
 
-let client_log_path = fs.readdirSync('./2M_post', { withFileTypes: true })
-    .filter(item => !item.isDirectory())
-    .filter(item => reg.test(item.name))
-    .map(item => item.name)
-// console.log(client_log_path)
 
 
-extract_doc_id_from_log_files(client_log_path).then(r => console.log(r.length))
+function get_x_random_id_from_2d_array(x, array) {
+    let ids = []
+    if (array) {
+        for (let i=0; i<x; i++) {
+            let a = Math.round(Math.random()*array.length)
+            if(array[a]) {
+                let b = Math.round(Math.random()*array[a].length)
+                let v2 = array[a][b]
+                ids.push(v2)
+            }
+        }
+    }
+    return ids
+}
+
+const getDirectories = async source =>
+    (await readdir(source, { withFileTypes: true }))
+        .filter(item => !item.isDirectory())
+        .filter(item => reg.test(item.name))
+        .map(item => source + item.name)
+
+async function test() {
+    let client_log_path = await getDirectories('./')
+    console.log(client_log_path)
+    let a = await extract_doc_id_from_log_files(client_log_path)
+    // .then(rr => {
+    //     console.log(rr.length)
+    //     rr.forEach(r => console.log(r.length))
+    //     console.log(get_x_random_id_from_2d_array(rr))
+    //     for (let i=0; i<10; i++) {
+    //         console.log(get_x_random_id_from_2d_array(rr))
+    //     }
+    // })
+    // a.forEach(r => console.log(r[0]))
+    // console.log(a[0][0])
+    console.log(get_x_random_id_from_2d_array(5, a))
+    // for (let i=0; i<10; i++) {
+    //     console.log(get_x_random_id_from_2d_array(a))
+    // }
+
+}
+// test()
+
+
 
 /**
  * 
@@ -88,8 +141,8 @@ extract_doc_id_from_log_files(client_log_path).then(r => console.log(r.length))
  * @param {int} worker_id 
  * @param {int} number_of_request 
  */
-async function request_worker(COLLECTION_ID, session_id, worker_id, number_of_request, start_id) {
-
+async function request_worker(COLLECTION_ID, session_id, worker_id, doc_ids, start_id) {
+    // request_worker(COLLECTION_ID, SESSION_ID, cluster.worker.id, msg.doc_ids, msg.start_id)
     // Sometime param can be null
     if (!COLLECTION_ID || !session_id) {
         await sleep_ms(10)
@@ -97,25 +150,22 @@ async function request_worker(COLLECTION_ID, session_id, worker_id, number_of_re
     }
 
     let result_all_requests = []
-
-    for (let i = 0; i < number_of_request; i++) {
-        data = {}
-        for (let j = max_attr - 1; j >= 0; j--) {
-            data["key_" + j] = "iteration_chunk_th=" + (i + start_id) + "_shard_th=" + 0
-        }
-        create_document_and_record_rtt(
-            databases, process.env.APPWRITE_DATABASE, COLLECTION_ID, data, i + start_id, 0
-        )
-            .then(result => { result_all_requests.push(result) })
-            .catch(e => { console.log(e); return e })
+    for (let i=0; i<doc_ids.length; i++) {
+        // get_document_and_record_rtt(
+        //     databases, process.env.APPWRITE_DATABASE, COLLECTION_ID, doc_ids[i], i + start_id
+        // )
+        //     .then(result => { result_all_requests.push(result) })
+        //     .catch(e => { console.log(e); return e })
+        result_all_requests.push({"worker_id": worker_id, "req_id": i + start_id, "doc_id": doc_ids[i]})
         await sleep_ms(10)
     }
-    
+
     let has_exported_data = false
-    let filename = `log_client_${worker_id - 1}_${session_id}.txt`
+    let filename = `log_client_get_${worker_id - 1}_${session_id}.txt`
     while (!has_exported_data) {
-        if (number_of_request == result_all_requests.length) {
-            // console.log(result_all_requests)
+        // console.log(`result_all_requests: ${result_all_requests}`)
+        if (result_all_requests.length == doc_ids.length) {
+            console.log(result_all_requests)
             // console.log("## All chunks resolved")
             write_array_of_results_to_file(result_all_requests, filename, is_2d = false, is_append = true)
                 .then(r => {
@@ -130,8 +180,8 @@ async function request_worker(COLLECTION_ID, session_id, worker_id, number_of_re
 }
 
 
-async function handle_master() {
-    let COLLECTION_ID = await clear_appwrite()
+async function handle_master(all_doc_ids_2d) {
+    // let COLLECTION_ID = await clear_appwrite()
 
     console.log(`++ Number of CPUs is ${totalCPUs}`);
     console.log(`++ Master ${process.pid} is running`);
@@ -157,8 +207,9 @@ async function handle_master() {
                             console.log(`++ Master => ${msg.worker_id}: ok, new start_id=${current_req_th}`)
                         }
                         worker.send({
-                            "COLLECTION_ID": COLLECTION_ID, "number_of_request": MAX_REQ_PER_TASK, 
-                            "start_id": current_req_th, "worker_id": msg.worker_id
+                            "COLLECTION_ID": COLLECTION_ID, 
+                            doc_ids: get_x_random_id_from_2d_array(MAX_REQ_PER_TASK, all_doc_ids_2d),
+                            "start_id": current_req_th, "worker_id": msg.worker_id,
                         })
                     }
                 } else {
@@ -167,7 +218,8 @@ async function handle_master() {
                         console.log(`++ Master => ${msg.worker_id}: Repeat start_id=${msg.start_id}`)
                     }
                     worker.send({
-                        "COLLECTION_ID": COLLECTION_ID, "number_of_request": MAX_REQ_PER_TASK, 
+                        "COLLECTION_ID": COLLECTION_ID, 
+                        doc_ids: get_x_random_id_from_2d_array(MAX_REQ_PER_TASK, all_doc_ids_2d),
                         "start_id": msg.start_id, "worker_id": msg.worker_id
                     })
                 }
@@ -178,9 +230,10 @@ async function handle_master() {
     console.log(`++ Initiated ${NBR_WORKERS} workers. Start assigning tasks ...`)
     
     for (let i=0; i<NBR_WORKERS; i++) {
-        // Don't set MAX_REQ << MAX_REQ_PER_TASK*10, because the worker.on('message') might have been executed!
-        // and thus already bumps current_req_th simultaneously 
-        workers[i].send({"start_id": current_req_th, "number_of_request": MAX_REQ_PER_TASK})
+        workers[i].send({
+            "start_id": current_req_th, 
+            doc_ids: get_x_random_id_from_2d_array(MAX_REQ_PER_TASK, all_doc_ids_2d)
+        })
         current_req_th += MAX_REQ_PER_TASK
         await sleep_ms(100)
     }
@@ -198,9 +251,19 @@ async function handle_master() {
     }
 }
 
+// let log_source = './'
+// let client_log_path = fs.readdirSync(log_source, { withFileTypes: true })
+//     .filter(item => !item.isDirectory())
+//     .filter(item => reg.test(item.name))
+//     .map(item => log_source + item.name)
+// console.log(client_log_path)
+
 async function main() {
     if (cluster.isMaster) {
-        await handle_master()
+        let client_log_path = await getDirectories('./')
+        console.log(client_log_path)
+        let doc_ids = await extract_doc_id_from_log_files(client_log_path)
+        await handle_master(doc_ids)
     } else {
         if (RUN_MODE == "debug") {
             console.log(`-- Worker ${cluster.worker.id} started.`)
@@ -211,25 +274,25 @@ async function main() {
                 // Exit  
             } else if ("start_id" in msg) {
                 // console.log(cluster.worker.id)
-                request_worker(COLLECTION_ID, SESSION_ID, cluster.worker.id, msg.number_of_request, msg.start_id)
+                request_worker(COLLECTION_ID, SESSION_ID, cluster.worker.id, msg.doc_ids, msg.start_id)
                     .then(r => {
                         if (!r) {
                             if (RUN_MODE == "debug") {
                                 console.log(`-- Worker ${cluster.worker.id} done: ` + 
-                                    `number_of_request=${msg.number_of_request}, start_id=${msg.start_id}`)
+                                    `number_of_request=${msg.doc_ids.legnth}, start_id=${msg.start_id}`)
                             }
                             process.send({ 
                                 worker_id: cluster.worker.id, 
-                                number_of_request: msg.number_of_request, start_id: msg.start_id 
+                                doc_ids: msg.doc_ids, start_id: msg.start_id 
                             });
                         } else {
                             if (RUN_MODE == "debug") {
                                 console.log(`-- Worker ${cluster.worker.id} ERROR: ` + 
-                                    `number_of_request=${msg.number_of_request}, start_id=${msg.start_id}: ${r}`)
+                                    `number_of_request=${msg.doc_ids.length}, start_id=${msg.start_id}: ${r}`)
                             }
                             process.send({ 
                                 worker_id: cluster.worker.id, 
-                                number_of_request: msg.number_of_request, start_id: msg.start_id, 
+                                doc_ids: msg.doc_ids, start_id: msg.start_id, 
                                 task_error: r 
                             });
                         }
@@ -240,4 +303,4 @@ async function main() {
 }
 
 
-// main()
+main()

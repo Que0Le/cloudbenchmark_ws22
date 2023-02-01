@@ -180,6 +180,9 @@ async function handle_master() {
 
             break
         }
+        if (nbr_task_done%1000==0) {
+            console.log(`nbr_task_done: ${nbr_task_done} / MAX_REQ/MAX_REQ_PER_TASK: ${MAX_REQ/MAX_REQ_PER_TASK}`)
+        }
         await sleep_ms(10)
     }
 }

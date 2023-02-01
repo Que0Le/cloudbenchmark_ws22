@@ -156,8 +156,6 @@ function create_new_collection(db_obj, database_id) {
  * @param {String} database_id  
  * @param {String} collection_id 
  * @param {Object} data 
- * @param {int} chunk_th 
- * @param {int} shard_th 
  * @returns {Promise<string>}
  */
 function create_document_and_record_rtt(db_obj, database_id, collection_id, data, req_id) {
@@ -171,6 +169,33 @@ function create_document_and_record_rtt(db_obj, database_id, collection_id, data
             // return response["$id"];
             // console.log({"chunk_th": chunk_th, "shard_th": shard_th, "t0": t0, "t3": t3})
             return {"req_id": req_id, doc_id: response["$id"], "t0": t0, "t3": t3}
+        },
+        function (error) {
+            console.log({req_id: req_id, error: error})
+            return {"req_id": req_id, "t0": t0, "t3": -999, "error": error}
+        });
+}
+
+
+/**
+ * 
+ * @param {Databases} db_obj 
+ * @param {String} database_id  
+ * @param {String} collection_id 
+ * @param {String} doc_id 
+ * @returns {Promise<string>}
+ */
+function get_document_and_record_rtt(db_obj, database_id, collection_id, doc_id, req_id) {
+    let t0 = new Date().getTime() //performance.now()
+    let promise = db_obj.getDocument(
+        database_id, collection_id, doc_id
+    );
+    return promise.then(
+        function (response) {
+            let t3 = new Date().getTime() //performance.now()
+            // return response["$id"];
+            // console.log({"chunk_th": chunk_th, "shard_th": shard_th, "t0": t0, "t3": t3})
+            return {"req_id": req_id, doc_id: doc_id, returned_id: response["$id"], "t0": t0, "t3": t3}
         },
         function (error) {
             console.log({req_id: req_id, error: error})
@@ -225,6 +250,6 @@ module.exports = {
     rand_str, sleep_ms, write_array_of_results_to_file,
     req_start_collecting_stat, req_stop_collecting_stat,
     create_new_collection, delete_all_collections, 
-    create_attr_for_collection,
+    create_attr_for_collection, get_document_and_record_rtt,
     create_document_and_record_rtt,
 }
