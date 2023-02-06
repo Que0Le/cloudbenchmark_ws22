@@ -5,18 +5,35 @@
 ```bash
 # debian 11, node 16
 sudo apt update
-sudo apt install git htop
-
-
+sudo apt install git htop python3-pip python3-venv -y
+# python3 -m pip install --user virtualenv
 
 #### Client
 curl -fsSL https://deb.nodesource.com/setup_16.x | sudo bash - &&\
 sudo apt-get install -y nodejs
 git clone https://github.com/Que0Le/cloudbenchmark_ws22.git
+python3 -m venv env
+source env/bin/activate
 cd cloudbenchmark_ws22
+npm i
 mkdir log_data
 
+nano .env   # copy form from env_sample.env and add real data
 
+## POST
+POSTGET=post MAX_REQ_PER_TASK=2 MAX_REQ=2000 NBR_WORKERS=10 RUN_MODE=silent DB_DATA_HALF_LENGTH=100
+SESSION_ID_POST="${POSTGET}.workers=${NBR_WORKERS}.task_size=${MAX_REQ_PER_TASK}.total=${MAX_REQ}.column_length=${DB_DATA_HALF_LENGTH}"
+# rm log_client_*[0-9]_*post*.txt
+NODE_NO_WARNINGS=1 node mass_post.js $SESSION_ID_POST $MAX_REQ_PER_TASK $MAX_REQ $NBR_WORKERS $RUN_MODE $DB_DATA_HALF_LENGTH
+python3 read_data.py $SESSION_ID_POST
+
+## GET
+COLLECTION_ID=63d929846ad2459e4ed7
+POSTGET=get MAX_REQ_PER_TASK=2 MAX_REQ=2000 NBR_WORKERS=10 RUN_MODE=silent DB_DATA_HALF_LENGTH=100
+SESSION_ID_GET="${POSTGET}.workers=${NBR_WORKERS}.task_size=${MAX_REQ_PER_TASK}.total=${MAX_REQ}.column_length=${DB_DATA_HALF_LENGTH}"
+rm log_client_*[0-9]_*get*.txt
+NODE_NO_WARNINGS=1 node mass_get.js $SESSION_ID_GET $MAX_REQ_PER_TASK $MAX_REQ $NBR_WORKERS $RUN_MODE $COLLECTION_ID $SESSION_ID_POST
+python3 read_data.py $SESSION_ID_GET
 
 
 ### Server
@@ -25,6 +42,9 @@ mkdir appwrite
 sudo docker run -it --rm --volume /var/run/docker.sock:/var/run/docker.sock --volume "$(pwd)"/appwrite:/usr/src/code/appwrite:rw --entrypoint="install" -e _APP_OPTIONS_ABUSE=disabled appwrite/appwrite:1.1.1
 git clone https://github.com/Que0Le/cloudbenchmark_ws22.git
 cd cloudbenchmark_ws22
+python3 -m venv env
+source env/bin/activate
+uvicorn system_stat:app --host 0.0.0.0 --port 8888
 
 ```
 
