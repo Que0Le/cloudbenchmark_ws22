@@ -78,7 +78,7 @@ const extract_doc_id_from_log_files = async (array) => {
 }
 
 // let session_id = "session1"
-let reg = new RegExp('log_client_\\d+_' + SESSION_ID_POST + '.txt', 'i');
+// let reg = new RegExp('log_client_\\d+_' + SESSION_ID_POST + '.txt', 'i');
 
 
 
@@ -100,8 +100,11 @@ function get_x_random_id_from_2d_array(x, array) {
 const getDirectories = async source =>
     (await readdir(source, { withFileTypes: true }))
         .filter(item => !item.isDirectory())
-        .filter(item => reg.test(item.name))
-        .map(item => source + item.name)
+        .filter(item => item.name.slice(-4) == ".txt")
+        .filter(item => item.name.includes(SESSION_ID_POST))
+        .filter(item => item.name.includes("client"))
+        // .filter(item => console.log(item.name))
+        .map(item => source + "/" + item.name)
 
 
 /**
@@ -111,6 +114,7 @@ const getDirectories = async source =>
  * @param {int} number_of_request 
  */
 async function request_worker(COLLECTION_ID, session_id, worker_id, doc_ids, start_id) {
+    // console.log(doc_ids)
     // request_worker(COLLECTION_ID, SESSION_ID, cluster.worker.id, msg.doc_ids, msg.start_id)
     // Sometime param can be null
     if (!COLLECTION_ID || !session_id) {
@@ -130,7 +134,7 @@ async function request_worker(COLLECTION_ID, session_id, worker_id, doc_ids, sta
     }
 
     let has_exported_data = false
-    let filename = `log_client_${worker_id - 1}_${session_id}.txt`
+    let filename = `${process.env.LOG_DATA_DIR}/log_client_${worker_id - 1}_${session_id}.txt`
     while (!has_exported_data) {
         if (result_all_requests.length == doc_ids.length) {
             // console.log(result_all_requests)
@@ -151,6 +155,7 @@ async function handle_master(all_doc_ids_2d) {
     // let COLLECTION_ID = await clear_appwrite()
 
     console.log(`++ Number of CPUs is ${totalCPUs}`);
+    console.log(`++ SESSION_ID_POST is ${SESSION_ID_POST}`);
     console.log(`++ Master ${process.pid} is running`);
     let res_start = await req_start_collecting_stat(SESSION_ID).catch(e => { console.log({ error: e }); process.exit() })
     console.log("## Sent req_start_collecting_stat")
@@ -231,9 +236,12 @@ async function handle_master(all_doc_ids_2d) {
 
 async function main() {
     if (cluster.isMaster) {
-        let client_log_path = await getDirectories('./')
-        console.log(client_log_path)
-        let doc_ids = await extract_doc_id_from_log_files(client_log_path)
+        let client_log_paths = await getDirectories(process.env.LOG_DATA_DIR)
+        if (client_log_paths.length == 0) {
+            console.log(`ERROR: No log file found in "${process.env.LOG_DATA_DIR}" for SESSION_ID_POST=${process.env.SESSION_ID_POST}`)
+            process.exit()
+        }
+        let doc_ids = await extract_doc_id_from_log_files(client_log_paths)
         await handle_master(doc_ids)
     } else {
         if (RUN_MODE == "debug") {

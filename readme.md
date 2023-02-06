@@ -2,10 +2,38 @@
 
 ## Install and run
 
+```bash
+# debian 11, node 16
+sudo apt update
+sudo apt install git htop
+
+
+
+#### Client
+curl -fsSL https://deb.nodesource.com/setup_16.x | sudo bash - &&\
+sudo apt-get install -y nodejs
+git clone https://github.com/Que0Le/cloudbenchmark_ws22.git
+cd cloudbenchmark_ws22
+mkdir log_data
+
+
+
+
+### Server
+# Appwrite
+mkdir appwrite
+sudo docker run -it --rm --volume /var/run/docker.sock:/var/run/docker.sock --volume "$(pwd)"/appwrite:/usr/src/code/appwrite:rw --entrypoint="install" -e _APP_OPTIONS_ABUSE=disabled appwrite/appwrite:1.1.1
+git clone https://github.com/Que0Le/cloudbenchmark_ws22.git
+cd cloudbenchmark_ws22
+
+```
+
+
 Ubuntu 20, Node 16
 
 ```bash
 sudo apt update
+sudo apt install git htop
 sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
@@ -14,13 +42,15 @@ sudo apt install -y docker-ce
 sudo usermod -aG docker ${USER}
 su - ${USER}
 
-git clone git@github.com:Que0Le/cloudbenchmark_ws22.git 
-cd cloudbenchmark_ws22
-mkdir appwrite && cd appwrite
-
-
 # Appwrite
-docker run -it --rm --volume /var/run/docker.sock:/var/run/docker.sock --volume "$(pwd)"/appwrite:/usr/src/code/appwrite:rw --entrypoint="install" -e _APP_OPTIONS_ABUSE=disabled appwrite/appwrite:1.1.1
+mkdir appwrite
+sudo docker run -it --rm --volume /var/run/docker.sock:/var/run/docker.sock --volume "$(pwd)"/appwrite:/usr/src/code/appwrite:rw --entrypoint="install" -e _APP_OPTIONS_ABUSE=disabled appwrite/appwrite:1.1.1
+
+
+git clone https://github.com/Que0Le/cloudbenchmark_ws22.git
+cd cloudbenchmark_ws22
+
+
 ## stop
 docker container stop $(docker container ls -q --filter name=appwrite*)
 
@@ -65,10 +95,12 @@ sudo apt-get install -y nodejs
 sudo apt install npm
 npm i
 
+
+mkdir log_data
 ## POST
 POSTGET=post MAX_REQ_PER_TASK=2 MAX_REQ=2000 NBR_WORKERS=10 RUN_MODE=silent DB_DATA_HALF_LENGTH=100
 SESSION_ID_POST="${POSTGET}.workers=${NBR_WORKERS}.task_size=${MAX_REQ_PER_TASK}.total=${MAX_REQ}.column_length=${DB_DATA_HALF_LENGTH}"
-rm log_client_*[0-9]_*post*.txt
+# rm log_client_*[0-9]_*post*.txt
 NODE_NO_WARNINGS=1 node mass_post.js $SESSION_ID_POST $MAX_REQ_PER_TASK $MAX_REQ $NBR_WORKERS $RUN_MODE $DB_DATA_HALF_LENGTH
 python3 read_data.py $SESSION_ID_POST
 

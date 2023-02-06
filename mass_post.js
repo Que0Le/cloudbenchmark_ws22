@@ -15,7 +15,7 @@ const {
     create_document_and_record_rtt
 } = require('./helpers');
 
-const SESSION_ID = process.argv[2]// "test_session"
+const SESSION_ID = process.argv[2]
 const MAX_REQ_PER_TASK = parseInt(process.argv[3])  // how many request to send per task per client
 const MAX_REQ = parseInt(process.argv[4])              // how many request in total to give to clients
 const NBR_WORKERS = process.argv[5]
@@ -26,7 +26,6 @@ const client = new Client();
 client.setSelfSigned();
 
 const databases = new Databases(client);
-// databases.createStringAttribute('[DATABASE_ID]', '[COLLECTION_ID]', '', 1, false);
 client
     .setEndpoint(process.env.APPWRITE_API_ENDPOINT) // Your API Endpoint
     .setProject(process.env.APPWRITE_PROJECT) // Your project ID
@@ -54,7 +53,7 @@ async function clear_appwrite() {
         console.log("Error create_new_collection:")
         console.log(e)
     })
-    console.log("COLLECTION_ID=" + COLLECTION_ID);
+    console.log("\nCOLLECTION_ID=" + COLLECTION_ID);
 
     attrs = []
     for (let i=0; i<max_attr; i++) {
@@ -110,7 +109,7 @@ async function request_worker(COLLECTION_ID, session_id, worker_id, number_of_re
     }
     
     let has_exported_data = false
-    let filename = `log_client_${worker_id - 1}_${session_id}.txt`
+    let filename = `${process.env.LOG_DATA_DIR}/log_client_${worker_id - 1}_${session_id}.txt`
     while (!has_exported_data) {
         if (number_of_request == result_all_requests.length) {
             // console.log(result_all_requests)

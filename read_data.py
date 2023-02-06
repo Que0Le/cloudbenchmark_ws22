@@ -11,12 +11,12 @@ import pandas as pd
 load_dotenv()
 SERVER_ADDR = os.getenv('SERVER_ADDR')
 SERVER_PORT = os.getenv('SERVER_PORT')
+LOG_DATA_DIR = os.getenv('LOG_DATA_DIR')
 
-SESSION_ID = sys.argv[1]#"test_session"
-log_sut_path = "log_sut_" + SESSION_ID + ".txt"
+SESSION_ID = sys.argv[1]
 
-log_client_paths = [f for f in os.listdir() if re.search(r'log_client_\d{1,2}_' + SESSION_ID + '.txt', f)]
-log_sut_path = f"log_sut_{SESSION_ID}.txt"
+# log_client_paths = [f for f in os.listdir(LOG_DATA_DIR + "/") if re.search(r'log_client_\d{1,2}_' + SESSION_ID + '.txt', f)]
+log_client_paths = [f for f in os.listdir(LOG_DATA_DIR + "/") if SESSION_ID in f and "client" in f]
 
 client_t3_t0 = []
 client_data = []
@@ -28,7 +28,7 @@ sut_data = []
 
 
 for log_client_path in log_client_paths:
-    with open(log_client_path) as log_client_f:
+    with open(f"{LOG_DATA_DIR}/{log_client_path}") as log_client_f:
         for line in log_client_f:
             res = json.loads(line)
             if res["t0"] < ts_first_req_t0:
@@ -64,8 +64,8 @@ print(f"## Avg: {(cb_total_req/((ts_last_req_t0 - ts_first_req_t0)/1000)):.2f} r
 
 print("---------------------------------  SUT  ---------------------------------")
 # Download log from SUT server
-urllib.request.urlretrieve(
-    f"http://{SERVER_ADDR}:{SERVER_PORT}/download-stat/{SESSION_ID}", f"log_sut_{SESSION_ID}.txt")
+log_sut_path, msg = urllib.request.urlretrieve(
+    f"http://{SERVER_ADDR}:{SERVER_PORT}/download-stat/{SESSION_ID}", f"{LOG_DATA_DIR}/log_sut_{SESSION_ID}.txt")
 
 with open(log_sut_path) as log_sut_f:
     for line in log_sut_f:
@@ -132,7 +132,7 @@ ax2.invert_yaxis()
 plt.title('Start and end timestamp of requests sorted by request ID')
 # plt.xlabel('Timestamp (in milisecond) since test begin')
 # plt.ylabel('Request-th sent to server')
-plt.savefig("fig_dev_" + SESSION_ID + ".png", dpi=800)
+plt.savefig(f"{LOG_DATA_DIR}/fig_dev_{SESSION_ID}.png", dpi=800)
 
 
 ## Histogram
@@ -141,6 +141,6 @@ plt.title('Distribution of latency values')
 numb_var = np.asarray(latencies_t3_t0)
 numb_var = pd.Series(numb_var, name = "Latency (t3-t0) value")
 sns.histplot(data = numb_var, kde=True)
-plt.savefig("fig_dev_hist_" + ".png", dpi=800)
+plt.savefig(f"{LOG_DATA_DIR}/fig_dev_hist_{SESSION_ID}.png", dpi=800)
 
 
