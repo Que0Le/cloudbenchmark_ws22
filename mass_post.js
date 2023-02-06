@@ -20,7 +20,7 @@ const MAX_REQ_PER_TASK = parseInt(process.argv[3])  // how many request to send 
 const MAX_REQ = parseInt(process.argv[4])              // how many request in total to give to clients
 const NBR_WORKERS = process.argv[5]
 const RUN_MODE = process.argv[6]
-const DB_DATA_HALF_LENGTH = parseInt(process.argv[7])
+const DB_DATA_HALF_LENGTH = Math.round(parseInt(process.argv[7])/2)
 
 const client = new Client();
 client.setSelfSigned();
@@ -54,7 +54,7 @@ async function clear_appwrite() {
         console.log("Error create_new_collection:")
         console.log(e)
     })
-    console.log("## CREATED COLLECTION_ID=" + COLLECTION_ID);
+    console.log("COLLECTION_ID=" + COLLECTION_ID);
 
     attrs = []
     for (let i=0; i<max_attr; i++) {

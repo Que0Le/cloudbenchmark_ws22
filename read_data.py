@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 import urllib.request
 from cycler import cycler
 from matplotlib.colors import hsv_to_rgb
+import seaborn as sns
+import pandas as pd
 
 load_dotenv()
 SERVER_ADDR = os.getenv('SERVER_ADDR')
@@ -31,7 +33,7 @@ for log_client_path in log_client_paths:
             res = json.loads(line)
             if res["t0"] < ts_first_req_t0:
                 ts_first_req_t0 = res["t0"]
-            if  res["t0"] > ts_last_req_t0:
+            if res["t0"] > ts_last_req_t0:
                 ts_last_req_t0 = res["t0"]
 
             if res["t3"] > 0:
@@ -83,6 +85,7 @@ print(f'sut_test_dur_ms:    {sut_test_dur_ms}  start: {sut_data[0]["timestamp"] 
 print(f'client_test_dur_ms: {sut_test_dur_ms}  start: {sorted_after_t0_client_data[0]["t0"]} end: {sorted_after_t0_client_data[-1]["t3"]}')
 
 
+latencies_t3_t0 = []
 # xmin, xmaxfloat or array-like. Respective beginning and end of each line.
 sorted_after_req_id_client_data = sorted(client_data, key=lambda k : k["req_id"])
 req_xmin = []       
@@ -90,7 +93,7 @@ req_xmax = []
 for req in sorted_after_req_id_client_data:
     req_xmin.append(req["t0"] - cb_test_start_ts)
     req_xmax.append(req["t3"] - cb_test_start_ts)
-
+    latencies_t3_t0.append(req["t3"] - req["t0"])
 
 sut_avg_cpu = []
 sut_timestamp = []
@@ -101,7 +104,7 @@ for sut_stat_line in sut_data:
 
 
 ### Plot start and end of requests
-y: list = range(0, cb_total_req)
+y: list = range(0, cb_total_req - count_error)
 # 1000 distinct colors:
 colors = [hsv_to_rgb([(i * 0.618033988749895) % 1.0, 1, 1])
           for i in range(100)]
@@ -132,5 +135,12 @@ plt.title('Start and end timestamp of requests sorted by request ID')
 plt.savefig("fig_dev_" + SESSION_ID + ".png", dpi=800)
 
 
-### Calculate requests/sec by interval
-# How many requests/100ms or 200ms or 1s 
+## Histogram
+fig = plt.figure()
+plt.title('Distribution of latency values')
+numb_var = np.asarray(latencies_t3_t0)
+numb_var = pd.Series(numb_var, name = "Latency (t3-t0) value")
+sns.histplot(data = numb_var, kde=True)
+plt.savefig("fig_dev_hist_" + ".png", dpi=800)
+
+
