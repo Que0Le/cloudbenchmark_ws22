@@ -1,6 +1,41 @@
+# Cloud benchmark WS2022/2023
+This repository holds source code and instruction as well as sample data for the module.
+
+The goal of the project is to benchmark the (mass) request handling capability of a single Appwrite instance, here runs on Google Computing cloud. The results can be used to:
+1. Understand the capability of Appwrite's software stack on a single machine in 2 metrics: request/sec handled and latency of requests
+2. Test the vertical scalability of Appwrite on Google Cloud Computing VM
+3. Base on these, estimate and balance the specs needed: can a 2 vCores VM be used for my particular usecase and expected load?
+
+There are 2 main metrics used to evaluate the results:
+- A. Request/sec: The number of request per second that the server can handle. This is calculated as `total_request`/`total_time_test_run`. Note: there are thresholds after which the server can not process the incomming request right-away and have to be put in waiting queue, which results in higher latency for such requests. 
+- B. Latency: We calculate the request latency by `t3-t0`, in which `t0=timestamp_client_send_request` and `t3=timestamp_client_receive_result`. The portion of latency causes by geography is ignored (and should be negliable anyway because our VMs located in the same datacenter), since we only interested in the time interval that server needed to process a single request. This value is *greatly* affected by __number of concurrent requests are being processed__ on server, __number of request in Appwrite's queue__ and __server's resources__.
+
+The architecture of the benchmark setup:
+
+<figure style="text-align: center;">
+  <img src="./media/client_server.png" width="80%">
+  <figcaption style="text-align: center;">2 VMs for Client Test (left) and System under Test (right)</figcaption>
+</figure>
+
+Each test consisted of 2 general purpose VMs running Debian 11. Thanks to the ability to edit VM's specification on Google Cloud, the same 2 VMs disk can be run on different hardware resources: CPU vCores, RAM, ... to test diffrent scenarios: low-end server, high-end server. We use the same 8 vCore AMD VM for the client machine for consistent results.
+
+<figure style="text-align: center;">
+  <img src="./media/machine_config_google_cloud.PNG" width="60%">
+  <figcaption style="text-align: center;">Set hardware spec on Google Cloud (only when VM is off)</figcaption>
+</figure>
+
+## Gotcha
+- NodeJS/Javascript's Promise is hard to get right for newcomers. The benchmark scripts are written in JS and are far from perfect. Many used `await` are unneccessary, however obligated to make the current programs run correctly.
+- Google Cloud are not always scalable. Sometimes starting a high-spec VM (especially with AMD processor) fails due to excess VM instances quota. Waiting usually required in such case.
+- Google cloud SSH key expiration can be annoying sometimes. Set a (relatively) permanent one: `ssh-rsa your_public_key_here google-ssh {"userName":"your_email","expireOn":"2024-02-06T18:53:55+0000"}`
+<figure style="text-align: center;">
+  <img src="./media/ssh_keys.PNG" width="50%">
+  <figcaption style="text-align: center;">Edit => add SSH key</figcaption>
+</figure>
 
 
-## Install and run on cloud: debian 11, node 16, python3
+
+## Instruction to install and run on cloud: debian 11, node 16, python3
 
 ```bash
 # debian 11, node 16
@@ -51,7 +86,7 @@ uvicorn system_stat:app --host 0.0.0.0 --port 8888
 ```
 
 
-# Development machine: Ubuntu 20, Node 16
+## Instruction to install on development machine: Ubuntu 20, Node 16
 
 ```bash
 sudo apt update
