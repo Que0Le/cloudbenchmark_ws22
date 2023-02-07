@@ -15,13 +15,18 @@ const {
     create_document_and_record_rtt
 } = require('./helpers');
 
-const SESSION_ID = process.argv[2]
-const MAX_REQ_PER_TASK = parseInt(process.argv[3])  // how many request to send per task per client
-const MAX_REQ = parseInt(process.argv[4])              // how many request in total to give to clients
-const NBR_WORKERS = process.argv[5]
-const RUN_MODE = process.argv[6]
-const DB_DATA_HALF_LENGTH = Math.round(parseInt(process.argv[7])/2)
+// Gather parameters
+// Usually looks like: post.workers=10.task_size=10.total=1000000.column_length=100
+const SESSION_ID = process.argv[2]                  
+const MAX_REQ_PER_TASK = parseInt(process.argv[3])     // how many request to send per task per slave
+const MAX_REQ = parseInt(process.argv[4])              // how many request in total
+const NBR_WORKERS = process.argv[5]                    // Number of workers
+const RUN_MODE = process.argv[6]                       // silent/debug -> print error
+// 1/2 length of string. @see generate_random_string_half_len
+const DB_DATA_HALF_LENGTH = Math.round(parseInt(process.argv[7])/2)   
+const max_attr = 10                                     // How many columns in Collection
 
+// Appwrite SDK init
 const client = new Client();
 client.setSelfSigned();
 
@@ -32,18 +37,25 @@ client
     .setKey(process.env.APPWRITE_API_KEY)
 ;
 
+// Set worker param
+cluster.schedulingPolicy = cluster.SCHED_NONE;
+
+
 /**
  * 
- * @param {int} len 
+ * @param {int} half_len 
  * @returns random string length=len*2
  */
 function generate_random_string_half_len(half_len) {
     return crypto.randomBytes(half_len).toString('hex')
 }
 
-cluster.schedulingPolicy = cluster.SCHED_NONE;
 
-let max_attr = 10
+/**
+ * Clear all collection from DB. 
+ * During development we deleted all other collection. Now commented out
+ * @returns 
+ */
 async function clear_appwrite() {
     // await delete_all_collections(databases, process.env.APPWRITE_DATABASE).catch(e => {
     //     console.log("Error delete_all_collections:")
@@ -79,10 +91,12 @@ async function clear_appwrite() {
 
 
 /**
- * 
- * @param {String} session_id 
- * @param {int} worker_id 
- * @param {int} number_of_request 
+ * Handle the request transmission
+ * @param {String} COLLECTION_ID 
+ * @param {String} session_id           
+ * @param {int} worker_id               
+ * @param {int} number_of_request       // how many req to send
+ * @param {int} start_id                // starting from this number
  */
 async function request_worker(COLLECTION_ID, session_id, worker_id, number_of_request, start_id) {
 
@@ -197,6 +211,7 @@ async function handle_master() {
         await sleep_ms(10)
     }
 }
+
 
 async function main() {
     if (cluster.isMaster) {

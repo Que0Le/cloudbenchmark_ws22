@@ -58,6 +58,10 @@ async function extract_doc_id_from_log_file(file_path) {
     }
 };
 
+/**
+ * Randomly shuffle the content in place
+ * @param {Array} array 
+ */
 function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -65,6 +69,11 @@ function shuffleArray(array) {
     }
 }
 
+/**
+ * 
+ * @param {Array<String>} array path to log files
+ * @returns {Promise<Array<String>>} 
+ */
 const extract_doc_id_from_log_files = async (array) => {
     const allAsyncResults = []
 
@@ -77,11 +86,13 @@ const extract_doc_id_from_log_files = async (array) => {
     return allAsyncResults
 }
 
-// let session_id = "session1"
-// let reg = new RegExp('log_client_\\d+_' + SESSION_ID_POST + '.txt', 'i');
 
-
-
+/**
+ * Get x random ID from a 2D array
+ * @param {int} x How many id
+ * @param {Array<Array<String>>} array 2d array holds ID strings
+ * @returns 
+ */
 function get_x_random_id_from_2d_array(x, array) {
     let ids = []
     if (array) {
@@ -97,6 +108,12 @@ function get_x_random_id_from_2d_array(x, array) {
     return ids
 }
 
+
+/**
+ * List of paths to log files for SESSION_ID_POST
+ * @param {String} source path to source folder
+ * @returns {Promise<Array<String>>}
+ */
 const getDirectories = async source =>
     (await readdir(source, { withFileTypes: true }))
         .filter(item => !item.isDirectory())
@@ -108,10 +125,12 @@ const getDirectories = async source =>
 
 
 /**
- * 
- * @param {String} session_id 
- * @param {int} worker_id 
- * @param {int} number_of_request 
+ * Handle the request transmission
+ * @param {String} COLLECTION_ID 
+ * @param {String} session_id           
+ * @param {int} worker_id               
+ * @param {int} number_of_request       // how many req to send
+ * @param {int} start_id                // starting from this number
  */
 async function request_worker(COLLECTION_ID, session_id, worker_id, doc_ids, start_id) {
     // console.log(doc_ids)
@@ -227,12 +246,6 @@ async function handle_master(all_doc_ids_2d) {
     }
 }
 
-// let log_source = './'
-// let client_log_path = fs.readdirSync(log_source, { withFileTypes: true })
-//     .filter(item => !item.isDirectory())
-//     .filter(item => reg.test(item.name))
-//     .map(item => log_source + item.name)
-// console.log(client_log_path)
 
 async function main() {
     if (cluster.isMaster) {

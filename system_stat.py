@@ -27,6 +27,7 @@ Server.handle_exit = AppStatus.handle_exit
 
 
 def collect_stat():
+    """ This function runs in background, collect stat data and export to file when signed to """
     global COLLECTING_STAT, stat, index, global_session_name
     while COLLECTING_STAT and not AppStatus.should_exit:
         cpu_per = psutil.cpu_percent(interval=None, percpu=True)
@@ -74,6 +75,7 @@ async def handle_stat(background_tasks: BackgroundTasks):
 
 @app.get("/start-collecting/", status_code=status.HTTP_201_CREATED)
 async def start_collecting(background_tasks: BackgroundTasks, response: Response, session_name: str = ""):
+    """ Endpoint to signal server collecting stat. Will stop any currently running task """
     global COLLECTING_STAT, stat, global_session_name
     if COLLECTING_STAT:
         COLLECTING_STAT = False
@@ -91,6 +93,7 @@ async def start_collecting(background_tasks: BackgroundTasks, response: Response
 
 @app.get("/stop-collecting", status_code=status.HTTP_202_ACCEPTED)
 async def stop_collecting(response: Response, session_name: str = ""):
+    """ Endpoint to signal server stop collecting stat """
     global COLLECTING_STAT, stat, global_session_name
     if COLLECTING_STAT:
         len_stat = len(stat)
@@ -104,5 +107,6 @@ async def stop_collecting(response: Response, session_name: str = ""):
 
 @app.get("/download-stat/{session_id}")
 async def get_stat_by_session_id(session_id: str):
+    """ Download stat file using File Response """
     if os.path.isfile("./" + "log_sut_" + session_id + ".txt"):
         return FileResponse("./" + "log_sut_" + session_id + ".txt")

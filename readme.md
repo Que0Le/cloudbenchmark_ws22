@@ -1,6 +1,6 @@
 
 
-## Install and run
+## Install and run on cloud: debian 11, node 16, python3
 
 ```bash
 # debian 11, node 16
@@ -14,6 +14,7 @@ sudo apt-get install -y nodejs
 git clone https://github.com/Que0Le/cloudbenchmark_ws22.git
 python3 -m venv env
 source env/bin/activate
+python3 -m pip install pip install -r requirements.txt
 cd cloudbenchmark_ws22
 npm i
 mkdir log_data
@@ -44,12 +45,13 @@ git clone https://github.com/Que0Le/cloudbenchmark_ws22.git
 cd cloudbenchmark_ws22
 python3 -m venv env
 source env/bin/activate
+python3 -m pip install pip install -r requirements.txt
 uvicorn system_stat:app --host 0.0.0.0 --port 8888
 
 ```
 
 
-Ubuntu 20, Node 16
+# Development machine: Ubuntu 20, Node 16
 
 ```bash
 sudo apt update
@@ -118,19 +120,19 @@ npm i
 
 mkdir log_data
 ## POST
-POSTGET=post MAX_REQ_PER_TASK=2 MAX_REQ=2000 NBR_WORKERS=10 RUN_MODE=silent DB_DATA_HALF_LENGTH=100
+POSTGET=post MAX_REQ_PER_TASK=2 MAX_REQ=2000 NBR_WORKERS=10 RUN_MODE=silent DB_DATA_LENGTH=100
 SESSION_ID_POST="${POSTGET}.workers=${NBR_WORKERS}.task_size=${MAX_REQ_PER_TASK}.total=${MAX_REQ}.column_length=${DB_DATA_HALF_LENGTH}"
-# rm log_client_*[0-9]_*post*.txt
+# rm log_data/log_client_*[0-9]_*post*.txt
 NODE_NO_WARNINGS=1 node mass_post.js $SESSION_ID_POST $MAX_REQ_PER_TASK $MAX_REQ $NBR_WORKERS $RUN_MODE $DB_DATA_HALF_LENGTH
-python3 read_data.py $SESSION_ID_POST
+python3 read_data.py $SESSION_ID_POST log_data
 
 ## GET
 COLLECTION_ID=63d929846ad2459e4ed7
-POSTGET=get MAX_REQ_PER_TASK=2 MAX_REQ=2000 NBR_WORKERS=10 RUN_MODE=silent DB_DATA_HALF_LENGTH=100
+POSTGET=get MAX_REQ_PER_TASK=2 MAX_REQ=2000 NBR_WORKERS=10 RUN_MODE=silent DB_DATA_LENGTH=100
 SESSION_ID_GET="${POSTGET}.workers=${NBR_WORKERS}.task_size=${MAX_REQ_PER_TASK}.total=${MAX_REQ}.column_length=${DB_DATA_HALF_LENGTH}"
-rm log_client_*[0-9]_*get*.txt
+# rm log_data/log_client_*[0-9]_*get*.txt
 NODE_NO_WARNINGS=1 node mass_get.js $SESSION_ID_GET $MAX_REQ_PER_TASK $MAX_REQ $NBR_WORKERS $RUN_MODE $COLLECTION_ID $SESSION_ID_POST
-python3 read_data.py $SESSION_ID_GET
+python3 read_data.py $SESSION_ID_GET log_data
 
 node -i -e "$(< ./mass_get.js)"
 
