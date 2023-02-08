@@ -109,7 +109,7 @@ with open("log_sut_" + filename + ".txt", 'w') as fout:
         print(json.dumps(s), file=fout)
 ```
 
-The signaling is handled by APIs powered by FastAPI framework. This is a simple but potent library to construct a API server. For example:
+The signaling is handled by APIs powered by FastAPI framework - a simple but potent library to build a API server. For example:
 ```python
 from fastapi import BackgroundTasks, Depends, FastAPI, status, Response
 from fastapi.responses import FileResponse
@@ -150,7 +150,7 @@ SESSION_ID_POST="${POSTGET}.workers=${NBR_WORKERS}.task_size=${MAX_REQ_PER_TASK}
 # log_client_0_post.workers=10.task_size=2.total=2000.column_length=100.txt
 ```
 
-The Python3 analysis script (`read_data.py`) is responsible for downloading the server's statistic and processing such data.
+Beside working with these local log files, the Python3 analysis script (`read_data.py`) is also responsible for downloading the server's statistic to process together. The time-based data points will be used to monitor the relation between incoming request and system usage level:
 
 ```json
 {
@@ -161,13 +161,49 @@ The Python3 analysis script (`read_data.py`) is responsible for downloading the 
 }
 ```
 
+We provide an example benchmark (`./example_log_data`) with 1 POST and 1 GET run with the same configuration as in [Commands for client](#Commands-for-client) section: 
 
+`MAX_REQ_PER_TASK=2 MAX_REQ=2000 NBR_WORKERS=10 RUN_MODE=silent DB_DATA_LENGTH=200`
+
+The example results:
+
+<table>
+   <tr>
+      <td style="text-align: center;">GET</td>
+      <td style="text-align: center;">POST</td>
+   </tr>
+   <tr>
+      <td valign="top"><img src="./media/fig_dev_get.workers=10.task_size=2.total=2000.column_length=200.png"></td>
+      <td valign="top"><img src="./media/fig_dev_post.workers=10.task_size=2.total=2000.column_length=200.png"></td>
+   </tr>
+   <tr>
+      <td valign="top"><img src="./media/fig_dev_hist_get.workers=10.task_size=2.total=2000.column_length=200.png"></td>
+      <td valign="top"><img src="./media/fig_dev_hist_post.workers=10.task_size=2.total=2000.column_length=200.png"></td>
+   </tr>
+</table>
+
+A large test with 1 million request on cloud server:
+<table>
+   <tr>
+      <td style="text-align: center;">GET</td>
+      <td style="text-align: center;">POST</td>
+   </tr>
+   <tr>
+      <td valign="top"><img src="./media/fig_dev_get.workers=20.task_size=10.total=100000.column_length=100.png"></td>
+      <td valign="top"><img src="./media/fig_dev_post.workers=10.task_size=10.total=1000000.column_length=100.png"></td>
+   </tr>
+   <tr>
+      <td valign="top"><img src="./media/fig_dev_hist_get.workers=20.task_size=10.total=100000.column_length=100.png"></td>
+      <td valign="top"><img src="./media/fig_dev_hist_post.workers=10.task_size=10.total=1000000.column_length=100.png"></td>
+   </tr>
+</table>
 
 ---
 ## Gotcha
 - NodeJS/Javascript's Promise is hard to get right for newcomers. The benchmark scripts are written in JS and are far from perfect. Many used `await` are unneccessary, however obligated to make the current programs run correctly.
 - Google Cloud are not always `scalable` in the sense of `always available`. Sometimes starting a high-spec VM (especially with AMD processor) fails due to excess VM instances quota. Waiting is usually required in such case.
-- Google cloud SSH key expiration can be annoying sometimes. Set a (relatively) permanent one: `ssh-rsa <your_public_key_here> google-ssh {"userName":"<your_email>","expireOn":"2024-02-06T18:53:55+0000"}`
+- Google cloud SSH key expiration can be annoying sometimes. Set a (relatively) permanent one: 
+    - `ssh-rsa <your_public_key_here> google-ssh {"userName":"<your_email>","expireOn":"2024-02-06T18:53:55+0000"}`
 <figure style="text-align: center;">
   <img src="./media/ssh_keys.PNG" width="70%">
   <figcaption style="text-align: center;">Edit => add SSH key</figcaption>
@@ -242,10 +278,10 @@ Start flooding server. Note:
 `create new document` requests:
 ```bash
 # Set param. 
-POSTGET=post MAX_REQ_PER_TASK=2 MAX_REQ=2000 NBR_WORKERS=10 RUN_MODE=silent DB_DATA_LENGTH=100
-SESSION_ID_POST="${POSTGET}.workers=${NBR_WORKERS}.task_size=${MAX_REQ_PER_TASK}.total=${MAX_REQ}.column_length=${DB_DATA_HALF_LENGTH}"
+POSTGET=post MAX_REQ_PER_TASK=2 MAX_REQ=2000 NBR_WORKERS=10 RUN_MODE=silent DB_DATA_LENGTH=200
+SESSION_ID_POST="${POSTGET}.workers=${NBR_WORKERS}.task_size=${MAX_REQ_PER_TASK}.total=${MAX_REQ}.column_length=${DB_DATA_LENGTH}"
 # Start transmission
-NODE_NO_WARNINGS=1 node mass_post.js $SESSION_ID_POST $MAX_REQ_PER_TASK $MAX_REQ $NBR_WORKERS $RUN_MODE $DB_DATA_HALF_LENGTH
+NODE_NO_WARNINGS=1 node mass_post.js $SESSION_ID_POST $MAX_REQ_PER_TASK $MAX_REQ $NBR_WORKERS $RUN_MODE $DB_DATA_LENGTH
 # Process result
 python3 read_data.py $SESSION_ID_POST
 ```
@@ -255,8 +291,8 @@ python3 read_data.py $SESSION_ID_POST
 # Set param. Copy (example) "COLLECTION_ID=63d929846ad2459e4ed7" from the log of the creating doc run:
 COLLECTION_ID=<COLLECTION_ID>
 #
-POSTGET=get MAX_REQ_PER_TASK=2 MAX_REQ=2000 NBR_WORKERS=10 RUN_MODE=silent DB_DATA_LENGTH=100
-SESSION_ID_GET="${POSTGET}.workers=${NBR_WORKERS}.task_size=${MAX_REQ_PER_TASK}.total=${MAX_REQ}.column_length=${DB_DATA_HALF_LENGTH}"
+POSTGET=get MAX_REQ_PER_TASK=2 MAX_REQ=2000 NBR_WORKERS=10 RUN_MODE=silent DB_DATA_LENGTH=200
+SESSION_ID_GET="${POSTGET}.workers=${NBR_WORKERS}.task_size=${MAX_REQ_PER_TASK}.total=${MAX_REQ}.column_length=${DB_DATA_LENGTH}"
 # Start transmission
 NODE_NO_WARNINGS=1 node mass_get.js $SESSION_ID_GET $MAX_REQ_PER_TASK $MAX_REQ $NBR_WORKERS $RUN_MODE $COLLECTION_ID $SESSION_ID_POST
 # Process result

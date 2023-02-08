@@ -14,7 +14,7 @@ SERVER_PORT = os.getenv('SERVER_PORT')
 LOG_DATA_DIR = os.getenv('LOG_DATA_DIR')
 
 SESSION_ID = sys.argv[1]
-if sys.argv[2]:
+if len(sys.argv)==3:
     LOG_DATA_DIR = sys.argv[2]
 
 log_client_paths = [f for f in os.listdir(LOG_DATA_DIR) if SESSION_ID in f and "client" in f]
