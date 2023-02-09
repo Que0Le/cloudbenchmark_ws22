@@ -145,7 +145,7 @@ function create_new_collection(db_obj, database_id) {
             return response["$id"];
         },
         function (error) {
-            return e
+            return error
         });
 }
 

@@ -182,7 +182,7 @@ The example results:
    </tr>
 </table>
 
-A large test with 1 million request on cloud server:
+A large test with 1 million request on a C2D standard 8 vCorescloud server:
 <table>
    <tr>
       <td style="text-align: center;">GET</td>
@@ -200,6 +200,8 @@ A large test with 1 million request on cloud server:
 
 ---
 ## Gotcha
+- Log data in `json` format is not efficient to store and parse, however is excellent during development and debug. Converting scripts to use a more compact storage format like `csv` is trivial if required for further development.
+- Automation tasks are costly at first (development, test ...) but might payback in the long term, especially repeatedly tasks. It also help avoiding mistakes!
 - NodeJS/Javascript's Promise is hard to get right for newcomers. The benchmark scripts are written in JS and are far from perfect. Many used `await` are unneccessary, however obligated to make the current programs run correctly.
 - Google Cloud are not always `scalable` in the sense of `always available`. Sometimes starting a high-spec VM (especially with AMD processor) fails due to excess VM instances quota. Waiting is usually required in such case.
 - Google cloud SSH key expiration can be annoying sometimes. Set a (relatively) permanent one: 
