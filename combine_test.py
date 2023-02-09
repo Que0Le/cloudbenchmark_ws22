@@ -34,21 +34,45 @@ print(f"Working session: {SESSION_ID}, data dir: {LOG_DATA_DIR}")
 
 print("--------------------------------- Client ---------------------------------")
 # Load client's log files
+client_t3_t0s = [[], [], []]
+client_datas = [[], [], []]
+count_errors = [0, 0, 0]
+cb_total_reqs = [0, 0, 0]
+ts_first_req_t0s = [sys.maxsize, sys.maxsize, sys.maxsize]
+ts_last_req_t0s = [-1, -1, -1]
+current_test_try = -1
 for log_client_path in log_client_paths:
+    # see which try we are
+    if "_0." in log_client_path:
+        current_test_try = 0
+    elif "_1." in log_client_path:
+        current_test_try = 1
+    elif "_2." in log_client_path:
+        current_test_try = 2
+    # Now open file
     with open(f"{LOG_DATA_DIR}/{log_client_path}") as log_client_f:
         for line in log_client_f:
             res = json.loads(line)
-            if res["t0"] < ts_first_req_t0:
-                ts_first_req_t0 = res["t0"]
-            if res["t0"] > ts_last_req_t0:
-                ts_last_req_t0 = res["t0"]
+            if res["t0"] < ts_first_req_t0s[current_test_try]:
+                ts_first_req_t0s[current_test_try] = res["t0"]
+            if res["t0"] > ts_last_req_t0s[current_test_try]:
+                ts_last_req_t0s[current_test_try] = res["t0"]
 
             if res["t3"] > 0:
-                client_data.append(res)
-                client_t3_t0.append(res["t3"] - res["t0"])
+                client_datas[current_test_try].append(res)
+                client_t3_t0s[current_test_try].append(res["t3"] - res["t0"])
             else:
-                count_error = count_error + 1
-            cb_total_req = cb_total_req + 1
+                count_errors[current_test_try] = count_errors[current_test_try] + 1
+            cb_total_reqs[current_test_try] = cb_total_reqs[current_test_try] + 1
+# Calculate combine data of 3 tries
+client_t3_t0 = client_t3_t0s[0] + client_t3_t0s[1] + client_t3_t0s[2]
+count_error = sum(count_errors)
+cb_total_req = sum(cb_total_reqs)
+cb_test_duration = 0
+for i in range(0, 3):
+    cb_test_duration += ts_last_req_t0s[i] - ts_first_req_t0s[i]
+
+
 print(f"## Loaded {len(log_client_paths)} client's log files")
 
 # Sort data after request's t0
@@ -64,8 +88,8 @@ print("## Latency: " +
     f"max={np.amax(client_t3_t0)} " +
     f"std={np.std(client_t3_t0, ddof=1)}")
 print(f"## Total: {cb_total_req} req, errors: {count_error} ({(count_error*100/cb_total_req):.2f}%)")
-print(f"## Test duration: {((ts_last_req_t0 - ts_first_req_t0)/1000):.2f} sec")
-print(f"## Avg: {(cb_total_req/((ts_last_req_t0 - ts_first_req_t0)/1000)):.2f} req/sec")
+print(f"## Test duration: {(cb_test_duration/1000):.2f} sec")
+print(f"## Avg: {(cb_total_req/(cb_test_duration/1000)):.2f} req/sec")
 
 
 # print("---------------------------------  SUT  ---------------------------------")
@@ -159,8 +183,8 @@ numb_var = pd.Series(numb_var, name = f"Request latency (t3-t0) in milisecond")
 sns.histplot(data = numb_var, kde=True)
 
 textbox_content = \
-    f"{cb_total_req} req in {((ts_last_req_t0 - ts_first_req_t0)/1000):.2f} sec\n" + \
-    f"Avg: {(cb_total_req/((ts_last_req_t0 - ts_first_req_t0)/1000)):.2f} req/sec\n" + \
+    f"{cb_total_req} req in {(cb_test_duration/1000):.2f} sec\n" + \
+    f"Avg: {(cb_total_req/(cb_test_duration/1000)):.2f} req/sec\n" + \
     f"Latencies: std={round(np.std(client_t3_t0, ddof=1), 2)}\n" + \
     f"min={np.amin(client_t3_t0)} " + \
     f"max={np.amax(client_t3_t0)}\n" + \
