@@ -10,7 +10,7 @@ The goal of the project is to benchmark the (mass) request handling capability o
 
 There are 2 main metrics used to evaluate the results:
 - A. Request/sec: The number of request per second that the server can handle. This is calculated as `total_request`/`total_time_test_run`. Note: there are thresholds after which the server can not process the incomming request right-away and have to be put in waiting queue, which results in higher latency for such requests. 
-- B. Latency: We calculate the request latency by `t3-t0`, in which `t0=timestamp_client_send_request` and `t3=timestamp_client_receive_result`. The portion of latency causes by geography is ignored (and should be negliable anyway because our VMs located in the same datacenter), since we only interested in the time interval that server needed to process a single request. This value is *greatly* affected by __number of concurrent requests are being processed__ on server, __number of request in Appwrite's queue__ and __server's resources__.
+- B. Latency: We calculate the request latency by `t3-t0`, in which `t0=timestamp_client_send_request` and `t3=timestamp_client_receive_result`. The portion of latency causes by geography is ignored (and should be negligible anyway because our VMs located in the same datacenter), since we only interested in the time interval that server needed to process a single request. This value is *greatly* affected by __number of concurrent requests are being processed__ on server, __number of request in Appwrite's queue__ and __server's resources__.
 
 The architecture of the benchmark setup:
 
@@ -165,7 +165,7 @@ We provide an example benchmark (`./example_log_data`) with 1 POST and 1 GET run
 
 `MAX_REQ_PER_TASK=2 MAX_REQ=2000 NBR_WORKERS=10 RUN_MODE=silent DB_DATA_LENGTH=200`
 
-The example results:
+The example results (extracted with `python3 read_data.py log_sut_post.workers=10.task_size=2.total=2000.column_length=200 ./example_log_data`):
 
 <table>
    <tr>
@@ -197,6 +197,15 @@ A large test with 1 million request on a C2D standard 8 vCorescloud server:
       <td valign="top"><img src="./media/fig_dev_hist_post.workers=10.task_size=10.total=1000000.column_length=100.png"></td>
    </tr>
 </table>
+
+
+A slightly modified script (`combine_test.py`) is used to combine result from multiple test repeated 3 times (hard-coded). The result:
+
+<figure style="text-align: center;">
+  <img src="./media/combined_hist_get.workers=8.task_size=2.total=4000.column_length=200.png" width="70%">
+  <figcaption style="text-align: center;">Combined result from same test, repeated 3 times</figcaption>
+</figure>
+
 
 ---
 ## Gotcha
